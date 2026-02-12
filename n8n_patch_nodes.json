@@ -1,0 +1,882 @@
+[
+  {
+    "parameters": {
+      "operation": "get",
+      "tableId": "assessments",
+      "filters": {
+        "conditions": [
+          {
+            "keyName": "organization_id",
+            "keyValue": "={{ $(\"Use Existing Org1\").item.json.organizationId }}"
+          },
+          {
+            "keyName": "assessment_type",
+            "keyValue": "={{ $(\"Use Existing Org1\").item.json.assessmentType.toLowerCase().includes(\"partnership\") ? \"partnership\" : \"gtm_readiness\" }}"
+          }
+        ]
+      }
+    },
+    "type": "n8n-nodes-base.supabase",
+    "typeVersion": 1,
+    "position": [
+      -448,
+      192
+    ],
+    "id": "f77cd92f-9dce-441d-81f0-3f5c5b25e0a0",
+    "name": "Check Existing Assessment",
+    "alwaysOutputData": true,
+    "credentials": {
+      "supabaseApi": {
+        "id": "FTSugGkqwnuu6irz",
+        "name": "SupaStack"
+      }
+    },
+    "onError": "continueRegularOutput"
+  },
+  {
+    "parameters": {
+      "conditions": {
+        "options": {
+          "caseSensitive": true,
+          "leftValue": "",
+          "typeValidation": "strict",
+          "version": 1
+        },
+        "conditions": [
+          {
+            "id": "assessment-exists-check",
+            "leftValue": "={{ $json.id }}",
+            "rightValue": "",
+            "operator": {
+              "type": "string",
+              "operation": "exists"
+            }
+          }
+        ],
+        "combinator": "and"
+      },
+      "options": {}
+    },
+    "type": "n8n-nodes-base.if",
+    "typeVersion": 2,
+    "position": [
+      -224,
+      192
+    ],
+    "id": "f9bbdf35-1cc6-4990-a395-92797cc9a13c",
+    "name": "Assessment Exists?"
+  },
+  {
+    "parameters": {
+      "jsCode": "// Assessment already exists for this organization\nconst existingOrgData = $('Use Existing Org1').first().json;\nconst existingAssessment = $('Check Existing Assessment').first().json;\n\nreturn {\n  status: 'skipped',\n  message: 'Assessment already exists for this organization',\n  organizationId: existingOrgData.organizationId,\n  companyName: existingOrgData.companyName,\n  companyDomain: existingOrgData.companyDomain,\n  existingAssessmentId: existingAssessment.id,\n  assessmentType: existingAssessment.assessment_type\n};"
+    },
+    "type": "n8n-nodes-base.code",
+    "typeVersion": 2,
+    "position": [
+      0,
+      0
+    ],
+    "id": "7abb4785-4e52-44d0-b2ce-19260ecc84b5",
+    "name": "Skip - Already Assessed"
+  },
+  {
+    "parameters": {
+      "httpMethod": "POST",
+      "path": "phase1-scanv2",
+      "options": {}
+    },
+    "type": "n8n-nodes-base.webhook",
+    "typeVersion": 1,
+    "position": [
+      -1776,
+      400
+    ],
+    "id": "e065049b-266a-4ded-bf9c-c6dbdef37e37",
+    "name": "Assessment Form1",
+    "webhookId": "phase1-scan"
+  },
+  {
+    "parameters": {
+      "jsCode": "// Normalize and validate input data\nconst formData = $input.first().json.body || $input.first().json;\n\n// Clean domain (remove protocol, www, trailing slashes)\nlet domain = formData['company_domain'] || formData['Company Domain'] || formData['company domain'] || '';\ndomain = domain.toLowerCase()\n  .replace(/^https?:\\/\\//, '')\n  .replace(/^www\\./, '')\n  .replace(/\\/+$/, '')\n  .trim();\n\n// Generate session ID\nconst sessionId = 'assess_' + Date.now() + '_' + Math.random().toString(36).substr(2, 9);\n\n// Determine playbook slug based on assessment type\nconst assessmentType = formData['Assessment Type'] || formData['assessment type'] || formData['Webscan Type'] || 'gtm_readiness';\nconst playbookSlug = assessmentType.toLowerCase().includes('partnership') ? 'partnership_readiness' : 'gtm_readiness';\n\nreturn {\n  sessionId,\n  companyName: (formData['company_name'] || formData['Company Name'] || formData['company name'] || '').trim(),\n  companyDomain: domain,\n  assessmentType,\n  playbookSlug,\n  contactEmail: formData['contact_email'] || formData['Contact Email'] || formData['contact email'] || null,\n  submittedAt: new Date().toISOString()\n};"
+    },
+    "type": "n8n-nodes-base.code",
+    "typeVersion": 2,
+    "position": [
+      -1552,
+      400
+    ],
+    "id": "69d9f6c4-7278-4b95-83de-8d66d5fddfc3",
+    "name": "Normalize Input1"
+  },
+  {
+    "parameters": {
+      "operation": "get",
+      "tableId": "organizations",
+      "filters": {
+        "conditions": [
+          {
+            "keyName": "domain",
+            "keyValue": "={{ $json.companyDomain }}"
+          }
+        ]
+      }
+    },
+    "type": "n8n-nodes-base.supabase",
+    "typeVersion": 1,
+    "position": [
+      -1328,
+      400
+    ],
+    "id": "ecb275c7-791e-4bfc-9e63-38badee1174a",
+    "name": "Check Org Exists1",
+    "alwaysOutputData": true,
+    "credentials": {
+      "supabaseApi": {
+        "id": "FTSugGkqwnuu6irz",
+        "name": "SupaStack"
+      }
+    },
+    "onError": "continueRegularOutput"
+  },
+  {
+    "parameters": {
+      "conditions": {
+        "options": {
+          "caseSensitive": true,
+          "leftValue": "",
+          "typeValidation": "strict",
+          "version": 1
+        },
+        "conditions": [
+          {
+            "id": "complex-exist-check",
+            "leftValue": "={{ !!$json.id && (!!$json.industry || !!$json.company_size || !!$json.arr_range || !!$json.partner_tier || !!$json.partner_specializations) }}",
+            "rightValue": "true",
+            "operator": {
+              "type": "boolean",
+              "operation": "true"
+            }
+          }
+        ],
+        "combinator": "and"
+      },
+      "options": {}
+    },
+    "type": "n8n-nodes-base.if",
+    "typeVersion": 2,
+    "position": [
+      -1120,
+      400
+    ],
+    "id": "593dcb25-3980-4ce7-a920-f87a5bdd0575",
+    "name": "Org Exists?1"
+  },
+  {
+    "parameters": {
+      "promptType": "define",
+      "text": "=You are an expert business analyst specializing in precise company classification.\n\nAnalyze '{{ $('Normalize Input1').item.json.companyName }}' at '{{ $('Normalize Input1').item.json.companyDomain }}' based on the website content below.\n\nWEBSITE CONTENT:\n{{ $json.text }}\n\nCLASSIFY THE COMPANY:\n\n1. **Primary Industry** - Be specific (e.g., \"B2B SaaS - Revenue Operations\" not just \"Software\")\n2. **Industry Vertical** - The specific market segment they serve\n3. **Service Model** - Platform, Managed Services, Consulting, Marketplace, etc.\n4. **Company Size** - Estimate based on signals (team page, office locations, job postings)\n5. **Employee Count Range** - 1-10, 11-50, 51-200, 201-500, 501-1000, 1000+\n6. **Estimated ARR Range** - Based on company maturity signals\n7. **GTM Model** - Product-led, Sales-led, Partner-led, Hybrid\n8. **Target Customer** - SMB, Mid-Market, Enterprise, or mix\n\nRespond ONLY with valid JSON in this exact format:\n{\n  \"industry_primary\": \"string\",\n  \"industry_vertical\": \"string\",\n  \"service_model\": \"string\",\n  \"company_size\": \"startup|scaleup|growth|enterprise\",\n  \"employee_count_range\": \"string\",\n  \"estimated_arr_range\": \"string\",\n  \"gtm_model\": \"string\",\n  \"target_customer\": \"string\",\n  \"confidence_score\": 0.0-1.0,\n  \"classification_notes\": \"string with key observations\"\n}",
+      "options": {
+        "systemMessage": "You are a business analyst AI. Always respond with valid JSON only, no markdown formatting."
+      }
+    },
+    "type": "@n8n/n8n-nodes-langchain.agent",
+    "typeVersion": 1.7,
+    "position": [
+      288,
+      608
+    ],
+    "id": "2f9e3ce8-544a-4716-9d8a-698865507277",
+    "name": "Company Profiler Agent1"
+  },
+  {
+    "parameters": {
+      "jsCode": "const normalized = $('Normalize Input1').first().json;\nconst profilerOutput = $('Company Profiler Agent1').first().json.output;\n\nlet existingId = null;\ntry {\n    const checkOrg = $('Check Org Exists1').first();\n    if (checkOrg && checkOrg.json && checkOrg.json.id) {\n        existingId = checkOrg.json.id;\n    }\n} catch(e) {}\n\nlet classification;\nconst jsonMatch = profilerOutput.match(/\\{[\\s\\S]*\\}/);\n\nif (!jsonMatch) {\n  throw new Error('Company Profiler did not return valid JSON');\n}\n\nclassification = JSON.parse(jsonMatch[0]);\n\nreturn {\n  ...normalized,\n  id: existingId,\n  classification,\n  webscanContent: $('Extract website information1').first().json.output,\n  isNewOrg: true\n};"
+    },
+    "type": "n8n-nodes-base.code",
+    "typeVersion": 2,
+    "position": [
+      640,
+      608
+    ],
+    "id": "55003e13-840a-4e63-ae12-50257be2d2ec",
+    "name": "Parse Classification1"
+  },
+  {
+    "parameters": {
+      "tableId": "organizations",
+      "fieldsUi": {
+        "fieldValues": [
+          {
+            "fieldId": "id",
+            "fieldValue": "={{ $json.id }}"
+          },
+          {
+            "fieldId": "name",
+            "fieldValue": "={{ $json.companyName }}"
+          },
+          {
+            "fieldId": "domain",
+            "fieldValue": "={{ $json.companyDomain }}"
+          },
+          {
+            "fieldId": "org_type",
+            "fieldValue": "customer"
+          },
+          {
+            "fieldId": "industry",
+            "fieldValue": "={{ $json.classification.industry_primary }}"
+          },
+          {
+            "fieldId": "company_size",
+            "fieldValue": "={{ $json.classification.employee_count_range }}"
+          },
+          {
+            "fieldId": "arr_range",
+            "fieldValue": "={{ $json.classification.estimated_arr_range }}"
+          }
+        ]
+      },
+      "operation": "upsert",
+      "updateKey": "domain"
+    },
+    "type": "n8n-nodes-base.supabase",
+    "typeVersion": 1,
+    "position": [
+      848,
+      608
+    ],
+    "id": "9212ed3c-db4c-41b3-add9-d7bdfc3d8cdc",
+    "name": "Create Organization1",
+    "credentials": {
+      "supabaseApi": {
+        "id": "FTSugGkqwnuu6irz",
+        "name": "SupaStack"
+      }
+    }
+  },
+  {
+    "parameters": {
+      "tableId": "company_profiles",
+      "fieldsUi": {
+        "fieldValues": [
+          {
+            "fieldId": "organization_id",
+            "fieldValue": "={{ $json.id }}"
+          },
+          {
+            "fieldId": "company_name",
+            "fieldValue": "={{ $('Parse Classification1').item.json.companyName }}"
+          },
+          {
+            "fieldId": "domain",
+            "fieldValue": "={{ $('Parse Classification1').item.json.companyDomain }}"
+          },
+          {
+            "fieldId": "industry_primary",
+            "fieldValue": "={{ $('Parse Classification1').item.json.classification.industry_primary }}"
+          },
+          {
+            "fieldId": "industry_vertical",
+            "fieldValue": "={{ $('Parse Classification1').item.json.classification.industry_vertical }}"
+          },
+          {
+            "fieldId": "employee_range",
+            "fieldValue": "={{ $('Parse Classification1').item.json.classification.employee_count_range }}"
+          },
+          {
+            "fieldId": "arr_range",
+            "fieldValue": "={{ $('Parse Classification1').item.json.classification.estimated_arr_range }}"
+          },
+          {
+            "fieldId": "business_model",
+            "fieldValue": "={{ $('Parse Classification1').item.json.classification.service_model }}"
+          },
+          {
+            "fieldId": "target_market",
+            "fieldValue": "={{ $('Parse Classification1').item.json.classification.target_customer }}"
+          },
+          {
+            "fieldId": "overall_confidence_score",
+            "fieldValue": "={{ $('Parse Classification1').item.json.classification.confidence_score }}"
+          }
+        ]
+      }
+    },
+    "type": "n8n-nodes-base.supabase",
+    "typeVersion": 1,
+    "position": [
+      1072,
+      608
+    ],
+    "id": "eb01e47c-8dde-47e1-b8fc-540c82f8cab0",
+    "name": "Create Company Profile (New)1",
+    "credentials": {
+      "supabaseApi": {
+        "id": "FTSugGkqwnuu6irz",
+        "name": "SupaStack"
+      }
+    }
+  },
+  {
+    "parameters": {
+      "jsCode": "// Prepare data for existing org path\nconst normalized = $('Normalize Input1').first().json;\nconst existingOrg = $('Check Org Exists1').first().json;\n\nreturn {\n  ...normalized,\n  organizationId: existingOrg.id,\n  isNewOrg: False\n};"
+    },
+    "type": "n8n-nodes-base.code",
+    "typeVersion": 2,
+    "position": [
+      -896,
+      192
+    ],
+    "id": "04c9cf8b-019d-409e-bab4-b5eab12d04d5",
+    "name": "Use Existing Org1"
+  },
+  {
+    "parameters": {
+      "operation": "get",
+      "tableId": "company_profiles",
+      "filters": {
+        "conditions": [
+          {
+            "keyName": "organization_id",
+            "keyValue": "={{ $json.organizationId }}"
+          }
+        ]
+      }
+    },
+    "type": "n8n-nodes-base.supabase",
+    "typeVersion": 1,
+    "position": [
+      -672,
+      192
+    ],
+    "id": "8e152447-a74c-4ee0-8b0a-021967efb3cb",
+    "name": "Get Existing Profile1",
+    "alwaysOutputData": true,
+    "credentials": {
+      "supabaseApi": {
+        "id": "FTSugGkqwnuu6irz",
+        "name": "SupaStack"
+      }
+    },
+    "onError": "continueRegularOutput"
+  },
+  {
+    "parameters": {
+      "jsCode": "// Merge data from new org path\nconst parseClass = $('Parse Classification1').first().json;\nconst newOrg = $('Create Organization1').first().json;\nconst newProfile = $('Create Company Profile (New)1').first().json;\n\nreturn {\n  sessionId: parseClass.sessionId,\n  companyName: parseClass.companyName,\n  companyDomain: parseClass.companyDomain,\n  assessmentType: parseClass.assessmentType,\n  playbookSlug: parseClass.playbookSlug,\n  contactEmail: parseClass.contactEmail,\n  \n  organizationId: newOrg.id,\n  companyProfileId: newProfile.id,\n  industryPrimary: parseClass.classification.industry_primary,\n  classification: parseClass.classification,\n  \n  isNewOrg: true,\n  webscanContent: parseClass.webscanContent\n};"
+    },
+    "type": "n8n-nodes-base.code",
+    "typeVersion": 2,
+    "position": [
+      1296,
+      608
+    ],
+    "id": "6c3917a6-184d-44fe-9586-f896efe86564",
+    "name": "Merge New Org Data1"
+  },
+  {
+    "parameters": {
+      "jsCode": "// Merge data from existing org path\nconst existingOrgData = $('Use Existing Org1').first().json;\nconst existingProfile = $('Get Existing Profile1').first().json;\nreturn {\n  sessionId: existingOrgData.sessionId,\n  companyName: existingOrgData.companyName,\n  companyDomain: existingOrgData.companyDomain,\n  assessmentType: existingOrgData.assessmentType,\n  playbookSlug: existingOrgData.playbookSlug,\n  contactEmail: existingOrgData.contactEmail,\n  \n  organizationId: existingOrgData.organizationId,\n  companyProfileId: existingProfile.id,\n  industryPrimary: existingProfile.industry_primary,\n  classification: {\n    industry_primary: existingProfile.industry_primary,\n    industry_vertical: existingProfile.industry_vertical,\n    employee_count_range: existingProfile.employee_range,\n    estimated_arr_range: existingProfile.arr_range,\n    service_model: existingProfile.business_model,\n    target_customer: existingProfile.target_market\n  },\n  \n  isNewOrg: false,\n  webscanContent: null\n};"
+    },
+    "type": "n8n-nodes-base.code",
+    "typeVersion": 2,
+    "position": [
+      1296,
+      192
+    ],
+    "id": "4913d186-75c8-4a74-9872-57920cd8cdc2",
+    "name": "Merge Existing Org Data1"
+  },
+  {
+    "parameters": {
+      "operation": "get",
+      "tableId": "playbooks",
+      "filters": {
+        "conditions": [
+          {
+            "keyName": "slug",
+            "keyValue": "={{ $json.playbookSlug }}"
+          },
+          {
+            "keyName": "is_active",
+            "keyValue": "true"
+          }
+        ]
+      }
+    },
+    "type": "n8n-nodes-base.supabase",
+    "typeVersion": 1,
+    "position": [
+      1728,
+      400
+    ],
+    "id": "5e197161-bf13-4bb3-bdb7-3fcb0b2c08c0",
+    "name": "Get Base Playbook1",
+    "credentials": {
+      "supabaseApi": {
+        "id": "FTSugGkqwnuu6irz",
+        "name": "SupaStack"
+      }
+    }
+  },
+  {
+    "parameters": {
+      "operation": "get",
+      "tableId": "playbook_versions",
+      "filters": {
+        "conditions": [
+          {
+            "keyName": "playbook_id",
+            "keyValue": "={{ $json.id }}"
+          },
+          {
+            "keyName": "status",
+            "keyValue": "active"
+          }
+        ]
+      }
+    },
+    "type": "n8n-nodes-base.supabase",
+    "typeVersion": 1,
+    "position": [
+      1952,
+      400
+    ],
+    "id": "18cfd408-f949-4474-8d60-34e560e0a5ee",
+    "name": "Get Playbook Version1",
+    "credentials": {
+      "supabaseApi": {
+        "id": "FTSugGkqwnuu6irz",
+        "name": "SupaStack"
+      }
+    }
+  },
+  {
+    "parameters": {
+      "jsCode": "// Prepare data for industry variant lookup\nlet mergedData;\n\ntry {\n  mergedData = $('Merge New Org Data1').first().json;\n} catch (e) {\n  mergedData = $('Merge Existing Org Data1').first().json;\n}\n\nconst playbook = $('Get Base Playbook1').first().json;\nconst playbookVersion = $('Get Playbook Version1').first().json;\n\nreturn {\n  ...mergedData,\n  playbookId: playbook.id,\n  playbookName: playbook.name,\n  playbookVersionId: playbookVersion.id,\n  playbookContent: playbookVersion.content,\n  dimensionCount: playbook.dimension_count,\n  questionCount: playbook.question_count\n};"
+    },
+    "type": "n8n-nodes-base.code",
+    "typeVersion": 2,
+    "position": [
+      2176,
+      400
+    ],
+    "id": "b2277766-6e06-4d2f-b0db-feeb043c098e",
+    "name": "Prepare Variant Lookup1"
+  },
+  {
+    "parameters": {
+      "operation": "get",
+      "tableId": "playbook_industry_variants",
+      "filters": {
+        "conditions": [
+          {
+            "keyName": "base_playbook_id",
+            "keyValue": "={{ $json.playbookId }}"
+          },
+          {
+            "keyName": "industry_primary",
+            "keyValue": "={{ $json.industryPrimary }}"
+          },
+          {
+            "keyName": "status",
+            "keyValue": "active"
+          },
+          {
+            "keyName": "Slug",
+            "keyValue": "={{ $json.playbookSlug }}"
+          }
+        ]
+      }
+    },
+    "type": "n8n-nodes-base.supabase",
+    "typeVersion": 1,
+    "position": [
+      2400,
+      400
+    ],
+    "id": "efcd76fb-4f07-4807-83f0-e423c71e5dbe",
+    "name": "Check Industry Variant1",
+    "alwaysOutputData": true,
+    "credentials": {
+      "supabaseApi": {
+        "id": "FTSugGkqwnuu6irz",
+        "name": "SupaStack"
+      }
+    },
+    "onError": "continueRegularOutput"
+  },
+  {
+    "parameters": {
+      "conditions": {
+        "options": {
+          "caseSensitive": true,
+          "leftValue": "",
+          "typeValidation": "strict",
+          "version": 1
+        },
+        "conditions": [
+          {
+            "id": "variant-exists-check",
+            "leftValue": "={{ $json.id }}",
+            "rightValue": "",
+            "operator": {
+              "type": "string",
+              "operation": "exists"
+            }
+          }
+        ],
+        "combinator": "and"
+      },
+      "options": {}
+    },
+    "type": "n8n-nodes-base.if",
+    "typeVersion": 2,
+    "position": [
+      2608,
+      400
+    ],
+    "id": "a4d25392-ecfc-44ad-9e20-34e7736f5a65",
+    "name": "Variant Exists?1"
+  },
+  {
+    "parameters": {
+      "jsCode": "// Use existing variant\nconst prepData = $('Prepare Variant Lookup1').first().json;\nconst variant = $('Check Industry Variant1').first().json;\n\nreturn {\n  ...prepData,\n  useVariant: true,\n  variantId: variant.id,\n  variantContent: variant.content,\n  variantName: variant.variant_name\n};"
+    },
+    "type": "n8n-nodes-base.code",
+    "typeVersion": 2,
+    "position": [
+      3200,
+      160
+    ],
+    "id": "ba46d151-542c-4160-8d9f-62fadbd4c4d8",
+    "name": "Use Existing Variant1"
+  },
+  {
+    "parameters": {
+      "promptType": "define",
+      "text": "=You are an expert GTM strategist. Your task is to adapt the base playbook for the {{ $('Prepare Variant Lookup1').item.json.industryPrimary }} industry.\n\nBASE PLAYBOOK:\n{{ JSON.stringify($('Prepare Variant Lookup1').item.json.playbookContent, null, 2) }}\n\nINDUSTRY: {{ $('Prepare Variant Lookup1').item.json.industryPrimary }}\nVERTICAL: {{ $('Prepare Variant Lookup1').item.json.classification.industry_vertical }}\n\nREQUIREMENTS:\n1. Maintain the EXACT same structure (all dimensions, all questions)\n2. Update benchmarks to industry-specific standards\n3. Replace generic examples with industry-specific ones\n4. Adjust KPI targets based on industry norms\n5. Keep all scoring criteria but contextualize for the industry\n6. Update the metadata.description to reflect the industry focus\n\nIMPORTANT: Return ONLY valid JSON - the complete adapted playbook. No markdown, no explanation, just the JSON object.",
+      "options": {
+        "systemMessage": "You are a GTM strategy AI that outputs only valid JSON. Never include markdown formatting or explanations - just the JSON object."
+      }
+    },
+    "type": "@n8n/n8n-nodes-langchain.agent",
+    "typeVersion": 1.7,
+    "position": [
+      2784,
+      608
+    ],
+    "id": "efb56441-2773-459c-8851-234ea3fa41c3",
+    "name": "Generate Industry Variant1"
+  },
+  {
+    "parameters": {
+      "jsCode": "// Parse the generated variant\nconst prepData = $('Prepare Variant Lookup1').first().json;\nconst variantOutput = $('Generate Industry Variant1').first().json.output;\n\n// Parse JSON from the agent response\nlet variantContent;\ntry {\n  const jsonMatch = variantOutput.match(/\\{[\\s\\S]*\\}/);\n  if (jsonMatch) {\n    variantContent = JSON.parse(jsonMatch[0]);\n  } else {\n    throw new Error('No JSON found in response');\n  }\n} catch (e) {\n  // If parsing fails, use base playbook content\n  console.log('Failed to parse variant, using base playbook:', e.message);\n  variantContent = prepData.playbookContent;\n}\n\n// Generate variant slug\n\nconst variantSlug = (prepData.industryPrimary && typeof prepData.industryPrimary === 'string')\n  ? prepData.industryPrimary\n      .toLowerCase()\n      .replace(/[^a-z0-9]+/g, '_')\n      .replace(/^_|_$/g, '') \n  : (prepData.industryPrimary || '');\n\nreturn {\n  ...prepData,\n  variantContent,\n  variantSlug,\n  variantName: `${prepData.playbookName} - ${prepData.industryPrimary}`\n};"
+    },
+    "type": "n8n-nodes-base.code",
+    "typeVersion": 2,
+    "position": [
+      3088,
+      608
+    ],
+    "id": "8d08c2d3-340b-4d64-906c-caa9e5502913",
+    "name": "Parse Generated Variant1"
+  },
+  {
+    "parameters": {
+      "tableId": "playbook_industry_variants",
+      "fieldsUi": {
+        "fieldValues": [
+          {
+            "fieldId": "base_playbook_id",
+            "fieldValue": "={{ $json.playbookId }}"
+          },
+          {
+            "fieldId": "base_version_id",
+            "fieldValue": "={{ $json.playbookVersionId }}"
+          },
+          {
+            "fieldId": "industry_primary",
+            "fieldValue": "={{ $json.industryPrimary }}"
+          },
+          {
+            "fieldId": "industry_vertical",
+            "fieldValue": "={{ $json.classification.industry_vertical }}"
+          },
+          {
+            "fieldId": "variant_name",
+            "fieldValue": "={{ $json.variantName }}"
+          },
+          {
+            "fieldId": "variant_slug",
+            "fieldValue": "={{ $json.variantSlug }}"
+          },
+          {
+            "fieldId": "content",
+            "fieldValue": "={{ JSON.stringify($json.variantContent) }}"
+          },
+          {
+            "fieldId": "adjustments_summary",
+            "fieldValue": "=Auto-generated industry variant for {{ $json.industryPrimary }}"
+          },
+          {
+            "fieldId": "generation_method",
+            "fieldValue": "ai_generated"
+          },
+          {
+            "fieldId": "status",
+            "fieldValue": "active"
+          },
+          {
+            "fieldId": "Slug",
+            "fieldValue": "={{ $json.playbookSlug }}"
+          }
+        ]
+      }
+    },
+    "type": "n8n-nodes-base.supabase",
+    "typeVersion": 1,
+    "position": [
+      3280,
+      608
+    ],
+    "id": "f6404378-37b8-46f5-865d-59de35d4f2da",
+    "name": "Save Industry Variant1",
+    "credentials": {
+      "supabaseApi": {
+        "id": "FTSugGkqwnuu6irz",
+        "name": "SupaStack"
+      }
+    }
+  },
+  {
+    "parameters": {
+      "jsCode": "// Prepare data after saving new variant\nconst parsedVariant = $('Parse Generated Variant1').first().json;\nconst savedVariant = $('Save Industry Variant1').first().json;\n\nreturn {\n  ...parsedVariant,\n  useVariant: true,\n  variantId: savedVariant.id\n};"
+    },
+    "type": "n8n-nodes-base.code",
+    "typeVersion": 2,
+    "position": [
+      3488,
+      608
+    ],
+    "id": "bd21b1a7-6146-4ed3-8e4a-1c2af81c715c",
+    "name": "New Variant Data1"
+  },
+  {
+    "parameters": {
+      "tableId": "assessments",
+      "fieldsUi": {
+        "fieldValues": [
+          {
+            "fieldId": "organization_id",
+            "fieldValue": "={{ $json.organizationId }}"
+          },
+          {
+            "fieldId": "playbook_version_id",
+            "fieldValue": "={{ $json.variantId ? null : $json.playbookVersionId }}"
+          },
+          {
+            "fieldId": "playbook_variant_id",
+            "fieldValue": "={{ $json.variantId || null }}"
+          },
+          {
+            "fieldId": "playbook_content_snapshot",
+            "fieldValue": "={{ JSON.stringify($json.variantContent || $json.playbookContent) }}"
+          },
+          {
+            "fieldId": "company_name",
+            "fieldValue": "={{ $json.companyName }}"
+          },
+          {
+            "fieldId": "current_stage",
+            "fieldValue": "web_scan"
+          },
+          {
+            "fieldId": "arr_range_snapshot",
+            "fieldValue": "={{ $json.classification.estimated_arr_range }}"
+          },
+          {
+            "fieldId": "assessment_type",
+            "fieldValue": "={{ $json.assessmentType.toLowerCase().includes('partnership') ? 'partnership' : 'gtm_readiness' }}"
+          }
+        ]
+      }
+    },
+    "type": "n8n-nodes-base.supabase",
+    "typeVersion": 1,
+    "position": [
+      3728,
+      624
+    ],
+    "id": "874ba1f9-f9ef-455e-9799-3a842863ffff",
+    "name": "Create Assessment1",
+    "credentials": {
+      "supabaseApi": {
+        "id": "FTSugGkqwnuu6irz",
+        "name": "SupaStack"
+      }
+    }
+  },
+  {
+    "parameters": {
+      "jsCode": "// Consolidate all data for dimension analysis stage\n// Get variant data from whichever path ran (Use Existing Variant1 or New Variant Data1)\nlet variantData;\ntry {\n  variantData = $('Use Existing Variant1').first().json;\n} catch (e) {\n  variantData = $('New Variant Data1').first().json;\n}\n\nconst assessment = $('Create Assessment1').first().json;\nconst assessmentVersion = $('Create Assessment Version').first().json;\n\n// Get the playbook content to use (variant if exists, otherwise base)\nconst playbookToUse = variantData.variantContent || variantData.playbookContent;\n\nreturn {\n  // IDs\n  organizationId: variantData.organizationId,\n  companyProfileId: variantData.companyProfileId,\n  assessmentId: assessment.id,\n  assessmentVersionId: assessmentVersion.id,\n  \n  // Company info\n  companyName: variantData.companyName,\n  companyDomain: variantData.companyDomain,\n  classification: variantData.classification,\n  industryPrimary: variantData.industryPrimary,\n  \n  // Playbook info\n  playbookId: variantData.playbookId,\n  playbookVersionId: variantData.playbookVersionId,\n  playbookVariantId: variantData.variantId || null,\n  playbookContent: playbookToUse,\n  assessmentType: variantData.assessmentType,\n  \n  // Session\n  sessionId: variantData.sessionId,\n  contactEmail: variantData.contactEmail,\n  \n  // Webscan content (if new org)\n  webscanContent: variantData.webscanContent,\n  \n  // Status\n  currentStage: 'ready_for_analysis',\n  isNewOrg: variantData.isNewOrg\n};"
+    },
+    "type": "n8n-nodes-base.code",
+    "typeVersion": 2,
+    "position": [
+      4368,
+      400
+    ],
+    "id": "1f80f39c-c1b8-4edc-b494-05673ecb3bd7",
+    "name": "Ready for Analysis1"
+  },
+  {
+    "parameters": {
+      "model": "openai/gpt-5-mini",
+      "options": {}
+    },
+    "type": "@n8n/n8n-nodes-langchain.lmChatOpenRouter",
+    "typeVersion": 1,
+    "position": [
+      304,
+      896
+    ],
+    "id": "b3c3faa2-5022-48f0-b01f-078e61d69e7d",
+    "name": "OpenRouter Chat Model2",
+    "credentials": {
+      "openRouterApi": {
+        "id": "DPnbXJEN5OpXBJeM",
+        "name": "OpenRouter account"
+      }
+    }
+  },
+  {
+    "parameters": {
+      "model": "anthropic/claude-opus-4.5",
+      "options": {}
+    },
+    "type": "@n8n/n8n-nodes-langchain.lmChatOpenRouter",
+    "typeVersion": 1,
+    "position": [
+      2784,
+      832
+    ],
+    "id": "a5a0c061-2762-4d2e-b29a-18feaf1365df",
+    "name": "OpenRouter Chat Model3",
+    "credentials": {
+      "openRouterApi": {
+        "id": "DPnbXJEN5OpXBJeM",
+        "name": "OpenRouter account"
+      }
+    }
+  },
+  {
+    "parameters": {
+      "url": "=https://{{ $('Normalize Input1').item.json.companyDomain }}",
+      "options": {}
+    },
+    "type": "n8n-nodes-base.httpRequest",
+    "typeVersion": 4.2,
+    "position": [
+      -720,
+      624
+    ],
+    "id": "c52ae85e-471e-4bb3-88a8-6efaf90c67b4",
+    "name": "HTTP Request1"
+  },
+  {
+    "parameters": {
+      "jsCode": "const html = $json.data;\n\n// Basic HTML to text\nconst text = html\n  .replace(/<script[^>]*>[\\s\\S]*?<\\/script>/gi, '')\n  .replace(/<style[^>]*>[\\s\\S]*?<\\/style>/gi, '')\n  .replace(/<nav[^>]*>[\\s\\S]*?<\\/nav>/gi, '')\n  .replace(/<footer[^>]*>[\\s\\S]*?<\\/footer>/gi, '')\n  .replace(/<header[^>]*>[\\s\\S]*?<\\/header>/gi, '')\n  .replace(/<[^>]+>/g, ' ')\n  .replace(/\\s+/g, ' ')\n  .trim()\n  .substring(0, 20000);\n\nreturn { text };"
+    },
+    "type": "n8n-nodes-base.code",
+    "typeVersion": 2,
+    "position": [
+      -288,
+      624
+    ],
+    "id": "b01e9fba-22a3-4431-8874-9975507c3093",
+    "name": "Extract website information1"
+  },
+  {
+    "parameters": {
+      "jsCode": "// playbookContent is already an object, no need to parse\nconst playbookContent = $json.playbookContent;\nconst dimensions = playbookContent.dimensions;\n\n// Return one item per dimension with all context needed\nreturn dimensions.map(dimension => ({\n  json: {\n    // Dimension-specific data\n    dimensionKey: dimension.key,\n    dimensionName: dimension.name,\n    dimensionOrder: dimension.order,\n    dimensionWeight: dimension.weight,\n    dimensionQuestions: dimension.questions,\n    questionCount: dimension.question_count,\n    \n    // Assessment context (same for all dimensions)\n    assessmentId: $json.assessmentId,\n    assessmentVersionId: $json.assessmentVersionId,\n    organizationId: $json.organizationId,\n    companyProfileId: $json.companyProfileId,\n    companyName: $json.companyName,\n    companyDomain: $json.companyDomain,\n    classification: $json.classification,\n    assessmentType: $json.assessmentType,\n    webscanContent: $json.webscanContent,\n    \n    // Metadata\n    totalDimensions: dimensions.length,\n    playbookMetadata: playbookContent.metadata,\n    scoringModel: playbookContent.scoring_model\n  }\n}));"
+    },
+    "type": "n8n-nodes-base.code",
+    "typeVersion": 2,
+    "position": [
+      4624,
+      400
+    ],
+    "id": "e5cefdf7-eae6-49cb-9590-ff180c87cc37",
+    "name": "Dimension Split"
+  },
+  {
+    "parameters": {
+      "tableId": "assessment_versions",
+      "fieldsUi": {
+        "fieldValues": [
+          {
+            "fieldId": "assessment_id",
+            "fieldValue": "={{ $json.id }}"
+          },
+          {
+            "fieldId": "stage",
+            "fieldValue": "web_scan"
+          },
+          {
+            "fieldId": "version_number",
+            "fieldValue": "1"
+          },
+          {
+            "fieldId": "version_type",
+            "fieldValue": "web_scan"
+          }
+        ]
+      }
+    },
+    "type": "n8n-nodes-base.supabase",
+    "typeVersion": 1,
+    "position": [
+      4080,
+      688
+    ],
+    "id": "bd7930f0-90a1-4356-8386-e579b9fa47be",
+    "name": "Create Assessment Version",
+    "credentials": {
+      "supabaseApi": {
+        "id": "FTSugGkqwnuu6irz",
+        "name": "SupaStack"
+      }
+    }
+  },
+  {
+    "parameters": {
+      "workflowId": {
+        "__rl": true,
+        "value": "XltKceTO8rGqvP4j",
+        "mode": "list",
+        "cachedResultUrl": "/workflow/XltKceTO8rGqvP4j",
+        "cachedResultName": "Search Analysis - Dimension Workflow - Integration"
+      },
+      "workflowInputs": {
+        "mappingMode": "defineBelow",
+        "value": {},
+        "matchingColumns": [],
+        "schema": [],
+        "attemptToConvertTypes": false,
+        "convertFieldsToString": true
+      },
+      "mode": "each",
+      "options": {
+        "waitForSubWorkflow": false
+      }
+    },
+    "type": "n8n-nodes-base.executeWorkflow",
+    "typeVersion": 1.3,
+    "position": [
+      4624,
+      -80
+    ],
+    "id": "c70608c0-8f25-4f13-adca-0c7e4421760f",
+    "name": "Call 'Search Analysis - Dimension Workflow - Integration'"
+  }
+]
