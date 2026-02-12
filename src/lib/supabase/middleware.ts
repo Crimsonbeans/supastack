@@ -42,9 +42,10 @@ export async function updateSession(request: NextRequest) {
         !request.nextUrl.pathname.startsWith('/login') &&
         !request.nextUrl.pathname.startsWith('/auth') &&
         !request.nextUrl.pathname.startsWith('/signup') &&
-        // EXEMPT admin routes from this check because they use a separate cookie-based auth
+        !request.nextUrl.pathname.startsWith('/controlpanel') &&
+        // Admin routes use separate cookie-based auth (admin_session cookie)
         !request.nextUrl.pathname.startsWith('/admin') &&
-        // Example: Only protect /dashboard or similar user routes
+        // Only protect /dashboard routes with Supabase auth
         request.nextUrl.pathname.startsWith('/dashboard')
     ) {
         // no user, potentially respond by redirecting the user to the login page

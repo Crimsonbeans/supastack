@@ -203,9 +203,11 @@ export default function DashboardClient({
                 return
             }
 
-            const { data, error } = await supabase
-                .from('prospects')
-                .insert([{
+            // Use admin API to create prospect (bypasses RLS with service role key)
+            const response = await fetch('/api/admin/create-prospect', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
                     company_name: formData.company_name,
                     company_domain: formData.company_domain,
                     webscan_type: formData.webscan_type,
@@ -213,29 +215,33 @@ export default function DashboardClient({
                     contact_email: formData.contact_email || null,
                     contact_linkedin: formData.contact_linkedin || null,
                     status: 'pending',
-                    confidence_score: 0,
-                    organization_id: organizationId || null
-                }])
-                .select()
-
-            if (error) throw error
-
-            if (data) {
-                setProspects(prev => [...data, ...prev])
-                setFormData({
-                    company_name: '',
-                    company_domain: '',
-                    webscan_type: 'GTM AI Readiness',
-                    contact_name: '',
-                    contact_email: '',
-                    contact_linkedin: ''
+                    source: 'outbound',
+                    confidence_score: 0
                 })
-                toast.success('Prospect created successfully')
-                router.refresh()
+            })
+
+            if (!response.ok) {
+                const errorData = await response.json()
+                throw new Error(errorData.error || 'Failed to create prospect')
             }
-        } catch (error) {
+
+            const data = await response.json()
+
+            setProspects(prev => [data, ...prev])
+            setFormData({
+                company_name: '',
+                company_domain: '',
+                webscan_type: 'GTM AI Readiness',
+                contact_name: '',
+                contact_email: '',
+                contact_linkedin: ''
+            })
+            toast.success('Prospect created successfully')
+            setShowCreateScreen(false) // Return to prospect list
+            router.refresh()
+        } catch (error: any) {
             console.error('Error adding prospect:', error)
-            toast.error('Error adding prospect')
+            toast.error(`Error adding prospect: ${error?.message || 'Unknown error'}`)
         } finally {
             setIsLoading(false)
         }
