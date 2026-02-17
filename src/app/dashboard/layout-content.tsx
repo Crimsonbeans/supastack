@@ -8,8 +8,7 @@ import {
     FileText,
     User,
     LogOut,
-    Menu,
-    ChevronDown
+    Menu
 } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { createClient } from '@/lib/supabase/client'
@@ -28,8 +27,8 @@ function Sidebar({ isOpen, setIsOpen, userEmail, userName }: SidebarProps) {
     const supabase = createClient()
 
     const navItems = [
-        { name: 'Report', href: '/dashboard', icon: FileText },
-        // Add more items here as we build them, e.g. Settings, Team, etc.
+        { name: 'Dashboard', href: '/dashboard', icon: LayoutDashboard },
+        { name: 'Webscan GTM Report', href: '/dashboard/report', icon: FileText },
     ]
 
     const handleLogout = async () => {

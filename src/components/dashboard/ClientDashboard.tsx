@@ -1,7 +1,7 @@
 'use client'
 
 import React, { useState, useEffect } from 'react'
-import { FileText, Loader2, Link as LinkIcon, Building2, Plus, ArrowRight, Sparkles, CheckCircle, ExternalLink } from 'lucide-react'
+import { FileText, Loader2, Building2, Plus, ArrowRight, Sparkles } from 'lucide-react'
 import { createClient } from '@/lib/supabase/client'
 import { useRouter } from 'next/navigation'
 
@@ -281,6 +281,22 @@ export default function ClientDashboard({ loading, report, error, userData, user
         )
     }
 
+    // Report completed — render inline via iframe to isolate report CSS
+    if (report.status === 'completed' && report.report_html) {
+        return (
+            <div className="w-full h-full">
+                <iframe
+                    srcDoc={report.report_html}
+                    className="w-full h-[calc(100vh-4rem)] rounded-2xl border border-gray-200 shadow-sm bg-white"
+                    style={{ minHeight: '100%' }}
+                    title="Report"
+                    sandbox="allow-same-origin"
+                />
+            </div>
+        )
+    }
+
+    // Report pending/processing — show "Magic is happening..." UI
     return (
         <div className="max-w-5xl mx-auto space-y-8">
             <div className="flex items-center justify-between">
@@ -290,93 +306,54 @@ export default function ClientDashboard({ loading, report, error, userData, user
                         {report.webscan_type} for {report.company_name}
                     </p>
                 </div>
-                {/* Status Badge */}
-                <div className={`px-3 py-1 rounded-full text-xs font-medium border
-                    ${report.status === 'completed'
-                        ? 'bg-green-50 text-green-700 border-green-200'
-                        : 'bg-amber-50 text-amber-700 border-amber-200'
-                    }`}
-                >
+                <div className="px-3 py-1 rounded-full text-xs font-medium border bg-amber-50 text-amber-700 border-amber-200">
                     {report.status.toUpperCase()}
                 </div>
             </div>
 
-            {/* Content Card */}
             <div className="bg-white rounded-2xl border border-gray-200 shadow-sm overflow-hidden p-12 text-center">
-                {report.status === 'completed' ? (
-                    <div className="max-w-md mx-auto space-y-8 animate-in fade-in slide-in-from-bottom-4 duration-700">
-                        {/* Success Icon */}
-                        <div className="mx-auto w-20 h-20 bg-green-100 text-green-600 rounded-full flex items-center justify-center ring-8 ring-green-50 shadow-sm">
-                            <CheckCircle className="w-10 h-10" />
-                        </div>
+                <div className="max-w-md mx-auto space-y-10 py-8 animate-in fade-in duration-1000 relative">
+                    {/* Magic Loading Icon with Ripple Effect */}
+                    <div className="relative mx-auto w-32 h-32 flex items-center justify-center">
+                        {/* Outer Ripples */}
+                        <div className="absolute inset-0 bg-blue-400/20 rounded-full animate-[ping_3s_cubic-bezier(0,0,0.2,1)_infinite]"></div>
+                        <div className="absolute inset-4 bg-blue-500/20 rounded-full animate-[ping_3s_cubic-bezier(0,0,0.2,1)_infinite_200ms]"></div>
+                        <div className="absolute inset-8 bg-blue-600/20 rounded-full animate-[ping_3s_cubic-bezier(0,0,0.2,1)_infinite_400ms]"></div>
 
-                        <div className="space-y-3">
-                            <h2 className="text-3xl font-bold text-gray-900 tracking-tight">
-                                Congratulations!
-                            </h2>
-                            <p className="text-gray-500 text-lg leading-relaxed">
-                                Your comprehensive <strong>{report.webscan_type}</strong> report is ready to view. We've analyzed your company data successfully.
-                            </p>
-                        </div>
-
-                        <div className="pt-4">
-                            <a
-                                href={`/report/${report.id}`}
-                                target="_blank"
-                                rel="noopener noreferrer"
-                                className="inline-flex items-center gap-3 px-8 py-4 bg-blue-600 hover:bg-blue-700 text-white text-lg font-semibold rounded-xl shadow-lg shadow-blue-600/20 transition-all hover:-translate-y-1 hover:shadow-xl group"
-                            >
-                                <FileText className="w-6 h-6" />
-                                View Full Report
-                                <ExternalLink className="w-5 h-5 opacity-60 group-hover:opacity-100 transition-opacity" />
-                            </a>
+                        {/* Core Icon */}
+                        <div className="relative w-20 h-20 bg-white text-blue-600 rounded-full flex items-center justify-center ring-4 ring-blue-50 shadow-xl z-10">
+                            <Sparkles className="w-10 h-10 text-blue-600 animate-[spin_4s_linear_infinite]" />
+                            <div className="absolute inset-0 bg-gradient-to-tr from-blue-500/10 to-transparent rounded-full animate-pulse"></div>
                         </div>
                     </div>
-                ) : (
-                    <div className="max-w-md mx-auto space-y-10 py-8 animate-in fade-in duration-1000 relative">
-                        {/* Magic Loading Icon with Ripple Effect */}
-                        <div className="relative mx-auto w-32 h-32 flex items-center justify-center">
-                            {/* Outer Ripples */}
-                            <div className="absolute inset-0 bg-blue-400/20 rounded-full animate-[ping_3s_cubic-bezier(0,0,0.2,1)_infinite]"></div>
-                            <div className="absolute inset-4 bg-blue-500/20 rounded-full animate-[ping_3s_cubic-bezier(0,0,0.2,1)_infinite_200ms]"></div>
-                            <div className="absolute inset-8 bg-blue-600/20 rounded-full animate-[ping_3s_cubic-bezier(0,0,0.2,1)_infinite_400ms]"></div>
 
-                            {/* Core Icon */}
-                            <div className="relative w-20 h-20 bg-white text-blue-600 rounded-full flex items-center justify-center ring-4 ring-blue-50 shadow-xl z-10">
-                                <Sparkles className="w-10 h-10 text-blue-600 animate-[spin_4s_linear_infinite]" />
-                                <div className="absolute inset-0 bg-gradient-to-tr from-blue-500/10 to-transparent rounded-full animate-pulse"></div>
-                            </div>
-                        </div>
-
-                        <div className="space-y-4">
-                            <h3 className="text-2xl font-bold text-gray-900 tracking-tight flex items-center justify-center gap-1">
-                                Magic is happening
-                                <span className="flex gap-1 ml-1">
-                                    <span className="animate-[bounce_1.4s_infinite] delay-0">.</span>
-                                    <span className="animate-[bounce_1.4s_infinite_200ms] delay-200">.</span>
-                                    <span className="animate-[bounce_1.4s_infinite_400ms] delay-400">.</span>
-                                </span>
-                            </h3>
-                            <p className="text-gray-500 text-lg leading-relaxed">
-                                Now you can sit back. We are analyzing your digital footprint and generating your report.
-                            </p>
-                            <p className="text-xs text-blue-600 font-medium bg-blue-50 px-4 py-2 rounded-full inline-block animate-pulse">
-                                We will notify you via email once the report is ready!
-                            </p>
-                        </div>
-
-                        {/* Enhanced Progress Bar */}
-                        {/* Enhanced Progress Bar */}
-                        <div className="pt-4 max-w-xs mx-auto space-y-2">
-                            <div className="h-2 w-full bg-gray-100 rounded-full overflow-hidden relative">
-                                <div className="h-full w-[60%] bg-gradient-to-r from-blue-500 to-indigo-600 rounded-full relative overflow-hidden animate-pulse">
-                                    <div className="absolute inset-0 bg-white/40 animate-[shimmer_2s_infinite]"></div>
-                                </div>
-                            </div>
-                            <p className="text-xs text-gray-400 font-mono animate-pulse">PROCESSING DATA...</p>
-                        </div>
+                    <div className="space-y-4">
+                        <h3 className="text-2xl font-bold text-gray-900 tracking-tight flex items-center justify-center gap-1">
+                            Magic is happening
+                            <span className="flex gap-1 ml-1">
+                                <span className="animate-[bounce_1.4s_infinite] delay-0">.</span>
+                                <span className="animate-[bounce_1.4s_infinite_200ms] delay-200">.</span>
+                                <span className="animate-[bounce_1.4s_infinite_400ms] delay-400">.</span>
+                            </span>
+                        </h3>
+                        <p className="text-gray-500 text-lg leading-relaxed">
+                            Now you can sit back. We are analyzing your digital footprint and generating your report.
+                        </p>
+                        <p className="text-xs text-blue-600 font-medium bg-blue-50 px-4 py-2 rounded-full inline-block animate-pulse">
+                            We will notify you via email once the report is ready!
+                        </p>
                     </div>
-                )}
+
+                    {/* Enhanced Progress Bar */}
+                    <div className="pt-4 max-w-xs mx-auto space-y-2">
+                        <div className="h-2 w-full bg-gray-100 rounded-full overflow-hidden relative">
+                            <div className="h-full w-[60%] bg-gradient-to-r from-blue-500 to-indigo-600 rounded-full relative overflow-hidden animate-pulse">
+                                <div className="absolute inset-0 bg-white/40 animate-[shimmer_2s_infinite]"></div>
+                            </div>
+                        </div>
+                        <p className="text-xs text-gray-400 font-mono animate-pulse">PROCESSING DATA...</p>
+                    </div>
+                </div>
             </div>
         </div>
     )
