@@ -28,7 +28,7 @@ export default function LoginPage() {
             setError(error.message)
             setLoading(false)
         } else {
-            router.push('/dashboard') // Redirect to Client Dashboard
+            router.push('/dashboard/report')
             router.refresh()
         }
     }

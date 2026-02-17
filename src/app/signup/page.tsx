@@ -4,7 +4,7 @@ import { useState, Suspense } from 'react'
 import { createClient } from '@/lib/supabase/client'
 import { useRouter, useSearchParams } from 'next/navigation'
 import Link from 'next/link'
-import { Loader2, Mail } from 'lucide-react'
+import { Loader2, Mail, Sparkles } from 'lucide-react'
 
 // Blocklist of non-business / disposable domains
 const BLOCKED_DOMAINS = new Set([
@@ -161,20 +161,21 @@ function SignupContent() {
                     <p className="text-zinc-400">
                         We've sent a verification link to <span className="text-white font-medium">{email}</span>.
                     </p>
-                    <p className="text-sm text-zinc-500">
-                        Please verify your email address to access your dashboard and view your report.
+                    <p className="text-sm text-zinc-300">
+                        Click the link in your email and you'll be taken directly to your report — no need to sign in again.
                     </p>
                 </div>
 
                 <div className="pt-4 space-y-4">
-                    <Link
-                        href="/login"
-                        className="block w-full bg-white text-black font-bold py-3 rounded-lg hover:bg-zinc-200 transition-colors"
-                    >
-                        Back to Sign In
-                    </Link>
+                    <div className="flex items-center gap-3 px-4 py-3 bg-indigo-500/10 border border-indigo-500/20 rounded-lg text-sm text-indigo-300">
+                        <Sparkles className="w-5 h-5 shrink-0" />
+                        <span>Your report is already being generated in the background!</span>
+                    </div>
                     <p className="text-xs text-zinc-600">
                         Didn't receive the email? Check your spam folder.
+                    </p>
+                    <p className="text-xs text-zinc-700">
+                        Already verified? <Link href="/login" className="text-zinc-400 hover:text-white underline">Sign in</Link>
                     </p>
                 </div>
             </div>
