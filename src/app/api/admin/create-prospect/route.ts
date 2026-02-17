@@ -44,6 +44,24 @@ export async function POST(request: NextRequest) {
             }
         }
 
+        // Check for duplicate: same email + same organization
+        if (organizationId && prospectData.contact_email) {
+            const { data: existing } = await supabaseAdmin
+                .from('prospects')
+                .select('id')
+                .eq('organization_id', organizationId)
+                .eq('contact_email', prospectData.contact_email)
+                .limit(1)
+                .single()
+
+            if (existing) {
+                return NextResponse.json(
+                    { error: 'A prospect with this email already exists in this organization' },
+                    { status: 409 }
+                )
+            }
+        }
+
         // Insert prospect using admin client (bypasses RLS)
         const { data, error } = await supabaseAdmin
             .from('prospects')

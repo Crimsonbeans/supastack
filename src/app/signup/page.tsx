@@ -4,7 +4,51 @@ import { useState, Suspense } from 'react'
 import { createClient } from '@/lib/supabase/client'
 import { useRouter, useSearchParams } from 'next/navigation'
 import Link from 'next/link'
-import { Loader2, Mail, CheckCircle } from 'lucide-react'
+import { Loader2, Mail } from 'lucide-react'
+
+// Blocklist of non-business / disposable domains
+const BLOCKED_DOMAINS = new Set([
+    'gmail.com', 'yahoo.com', 'yahoo.co.in', 'yahoo.co.uk',
+    'hotmail.com', 'outlook.com', 'live.com', 'msn.com',
+    'aol.com', 'icloud.com', 'me.com', 'mac.com',
+    'mail.com', 'email.com',
+    'protonmail.com', 'proton.me',
+    'zoho.com', 'zohomail.com',
+    'yandex.com', 'yandex.ru',
+    'rediffmail.com', 'rediff.com',
+    'test.com', 'example.com', 'example.org', 'example.net',
+    'mailinator.com', 'guerrillamail.com', 'tempmail.com', 'temp-mail.org',
+    'throwaway.email', 'sharklasers.com', 'guerrillamailblock.com',
+    'grr.la', 'dispostable.com', 'yopmail.com',
+])
+
+// Domain format regex: word characters/hyphens + dot + 2-12 char TLD
+const DOMAIN_REGEX = /^[a-zA-Z0-9]([a-zA-Z0-9-]*[a-zA-Z0-9])?(\.[a-zA-Z0-9]([a-zA-Z0-9-]*[a-zA-Z0-9])?)*\.[a-zA-Z]{2,12}$/
+
+// Email format regex
+const EMAIL_REGEX = /^[a-zA-Z0-9.!#$%&'*+/=?^_`{|}~-]+@[a-zA-Z0-9]([a-zA-Z0-9-]*[a-zA-Z0-9])?(\.[a-zA-Z0-9]([a-zA-Z0-9-]*[a-zA-Z0-9])?)*\.[a-zA-Z]{2,}$/
+
+function cleanDomain(value: string): string {
+    return value
+        .trim()
+        .toLowerCase()
+        .replace(/^https?:\/\//, '')
+        .replace(/^www\./, '')
+        .replace(/\/.*$/, '') // remove trailing paths
+}
+
+function validateDomain(domain: string): string | null {
+    if (!domain) return 'Company domain is required'
+    if (!DOMAIN_REGEX.test(domain)) return 'Please enter a valid domain (e.g. yourcompany.com)'
+    if (BLOCKED_DOMAINS.has(domain)) return 'Please enter a valid business domain, not a personal email provider'
+    return null
+}
+
+function validateEmail(email: string): string | null {
+    if (!email) return 'Email is required'
+    if (!EMAIL_REGEX.test(email)) return 'Please enter a valid email address'
+    return null
+}
 
 function SignupContent() {
     const searchParams = useSearchParams()
@@ -15,16 +59,60 @@ function SignupContent() {
     const [password, setPassword] = useState('')
     const [fullName, setFullName] = useState('')
     const [companyName, setCompanyName] = useState(initialCompany)
+    const [companyDomain, setCompanyDomain] = useState(initialDomain ? cleanDomain(initialDomain) : '')
     const [loading, setLoading] = useState(false)
     const [error, setError] = useState<string | null>(null)
+    const [domainError, setDomainError] = useState<string | null>(null)
+    const [emailError, setEmailError] = useState<string | null>(null)
     const [success, setSuccess] = useState(false)
     const router = useRouter()
     const supabase = createClient()
 
+    const handleEmailChange = (value: string) => {
+        setEmail(value)
+        setEmailError(null)
+
+        // Auto-populate domain from email if domain is empty
+        if (!companyDomain && value.includes('@')) {
+            const emailDomain = value.split('@')[1]
+            if (emailDomain && emailDomain.includes('.') && !BLOCKED_DOMAINS.has(emailDomain.toLowerCase())) {
+                setCompanyDomain(emailDomain.toLowerCase())
+            }
+        }
+    }
+
+    const handleDomainChange = (value: string) => {
+        const cleaned = cleanDomain(value)
+        setCompanyDomain(cleaned)
+        setDomainError(null)
+    }
+
+    const handleDomainBlur = () => {
+        if (companyDomain) {
+            const err = validateDomain(companyDomain)
+            setDomainError(err)
+        }
+    }
+
+    const handleEmailBlur = () => {
+        if (email) {
+            const err = validateEmail(email)
+            setEmailError(err)
+        }
+    }
+
     const handleSignup = async (e: React.FormEvent) => {
         e.preventDefault()
-        setLoading(true)
         setError(null)
+
+        // Validate all fields
+        const dErr = validateDomain(companyDomain)
+        const eErr = validateEmail(email)
+
+        if (dErr) { setDomainError(dErr); return }
+        if (eErr) { setEmailError(eErr); return }
+
+        setLoading(true)
 
         const { error } = await supabase.auth.signUp({
             email,
@@ -34,7 +122,7 @@ function SignupContent() {
                 data: {
                     full_name: fullName,
                     company_name: companyName,
-                    company_domain: initialDomain // stored in metadata for trigger to use
+                    company_domain: companyDomain
                 }
             }
         })
@@ -42,11 +130,21 @@ function SignupContent() {
         if (error) {
             setError(error.message)
             setLoading(false)
-        } else {
-            // Successful signup - show verification message
-            setSuccess(true)
-            setLoading(false)
+            return
         }
+
+        // Signup succeeded — show verification screen
+        setSuccess(true)
+        setLoading(false)
+
+        // Fire-and-forget: trigger report generation in background
+        fetch('/api/auto-generate-report', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ email, company_domain: companyDomain }),
+        }).catch(() => {
+            // Silently ignore — user can still trigger manually later
+        })
     }
 
     if (success) {
@@ -112,14 +210,29 @@ function SignupContent() {
                     />
                 </div>
                 <div>
+                    <label className="block text-sm font-medium text-zinc-400 mb-1">Company Domain</label>
+                    <input
+                        type="text"
+                        value={companyDomain}
+                        onChange={(e) => handleDomainChange(e.target.value)}
+                        onBlur={handleDomainBlur}
+                        placeholder="e.g. yourcompany.com"
+                        className={`w-full bg-zinc-950 border rounded-lg p-3 text-white focus:ring-2 focus:ring-indigo-500 focus:outline-none ${domainError ? 'border-red-500' : 'border-zinc-800'}`}
+                        required
+                    />
+                    {domainError && <p className="text-red-400 text-xs mt-1">{domainError}</p>}
+                </div>
+                <div>
                     <label className="block text-sm font-medium text-zinc-400 mb-1">Email</label>
                     <input
                         type="email"
                         value={email}
-                        onChange={(e) => setEmail(e.target.value)}
-                        className="w-full bg-zinc-950 border border-zinc-800 rounded-lg p-3 text-white focus:ring-2 focus:ring-indigo-500 focus:outline-none"
+                        onChange={(e) => handleEmailChange(e.target.value)}
+                        onBlur={handleEmailBlur}
+                        className={`w-full bg-zinc-950 border rounded-lg p-3 text-white focus:ring-2 focus:ring-indigo-500 focus:outline-none ${emailError ? 'border-red-500' : 'border-zinc-800'}`}
                         required
                     />
+                    {emailError && <p className="text-red-400 text-xs mt-1">{emailError}</p>}
                 </div>
                 <div>
                     <label className="block text-sm font-medium text-zinc-400 mb-1">Password</label>

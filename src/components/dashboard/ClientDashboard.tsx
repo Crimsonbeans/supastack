@@ -210,21 +210,6 @@ export default function ClientDashboard({ loading, report, error, userData, user
 
                             <div className="space-y-2">
                                 <label className="text-xs font-semibold text-gray-500 uppercase tracking-wider">
-                                    Scan Type
-                                </label>
-                                <select
-                                    name="webscan_type"
-                                    value={formData.webscan_type}
-                                    onChange={handleInputChange}
-                                    className="w-full px-4 py-3 bg-gray-50 border border-gray-200 rounded-xl text-sm text-gray-900 focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 transition-all"
-                                >
-                                    <option value="GTM AI Readiness">GTM AI Readiness</option>
-                                    <option value="Partnership Readiness">Partnership Readiness</option>
-                                </select>
-                            </div>
-
-                            <div className="space-y-2">
-                                <label className="text-xs font-semibold text-gray-500 uppercase tracking-wider">
                                     LinkedIn Profile
                                 </label>
                                 <input

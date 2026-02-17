@@ -33,9 +33,41 @@ export async function POST(request: NextRequest) {
         // n8n webhook URL - Replace with your actual n8n webhook URL
         const N8N_WEBHOOK_URL = process.env.N8N_WEBHOOK_URL || 'YOUR_N8N_WEBHOOK_URL_HERE'
 
-        // Trigger n8n workflow for each prospect
+        // Trigger n8n workflow for each prospect (with org-level report reuse)
         const results = await Promise.allSettled(
             prospects.map(async (prospect) => {
+                // Check if another prospect in the same org already has a completed report
+                if (prospect.organization_id) {
+                    const { data: existingReport } = await supabase
+                        .from('prospects')
+                        .select('report_html, report_html_public')
+                        .eq('organization_id', prospect.organization_id)
+                        .eq('status', 'completed')
+                        .not('report_html', 'is', null)
+                        .neq('id', prospect.id)
+                        .limit(1)
+                        .single()
+
+                    if (existingReport?.report_html) {
+                        // Reuse existing report — no N8N call needed
+                        await supabase
+                            .from('prospects')
+                            .update({
+                                status: 'completed',
+                                report_html: existingReport.report_html,
+                                report_html_public: existingReport.report_html_public || null,
+                            })
+                            .eq('id', prospect.id)
+
+                        return {
+                            prospectId: prospect.id,
+                            companyName: prospect.company_name,
+                            success: true,
+                            reused: true,
+                        }
+                    }
+                }
+
                 const response = await fetch(N8N_WEBHOOK_URL, {
                     method: 'POST',
                     headers: {
@@ -43,7 +75,7 @@ export async function POST(request: NextRequest) {
                     },
                     body: JSON.stringify({
                         'company_name': prospect.company_name,
-                        'company_domain': prospect.company_domain.replace(/^https?:\/\//, ''), // Remove protocol if present
+                        'company_domain': prospect.company_domain.replace(/^https?:\/\//, ''),
                         'webscan_type': prospect.webscan_type,
                         'contact_email': prospect.contact_email,
                         'contact_name': prospect.contact_name,
@@ -65,6 +97,7 @@ export async function POST(request: NextRequest) {
                     prospectId: prospect.id,
                     companyName: prospect.company_name,
                     success: true,
+                    reused: false,
                 }
             })
         )
