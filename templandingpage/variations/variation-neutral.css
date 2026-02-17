@@ -1,0 +1,112 @@
+/* Neutral Concept: Off-white + Gray */
+.variant-neutral {
+  --bg: #f6f7f8;
+  --surface: #ffffff;
+  --surface-muted: #f1f3f4;
+  --line: #d6dbe0;
+  --line-strong: #bcc4cc;
+  --ink: #1d232a;
+  --copy: #47525d;
+  --muted: #697581;
+  --brand: #313841;
+  --brand-strong: #222930;
+  --accent: #5f6973;
+  --accent-soft: #f3f5f6;
+  --dark-bg: #eef1f3;
+  --dark-line: #ccd3da;
+  --dark-ink: #1f262d;
+  --dark-copy: #495460;
+  --focus: rgba(49, 56, 65, 0.22);
+  --shadow-sm: 0 2px 10px rgba(25, 35, 45, 0.05);
+  --shadow-md: 0 12px 26px rgba(25, 35, 45, 0.08);
+}
+
+body.variant-neutral {
+  background: var(--bg);
+}
+
+.variant-neutral .header {
+  background: color-mix(in srgb, var(--surface) 94%, var(--bg) 6%);
+}
+
+.variant-neutral .ribbon,
+.variant-neutral .section--soft,
+.variant-neutral .results,
+.variant-neutral .site-footer {
+  background: var(--surface-muted);
+}
+
+.variant-neutral .eyebrow,
+.variant-neutral .statement__tag,
+.variant-neutral .label,
+.variant-neutral .flow__step small {
+  background: var(--surface);
+  border-color: var(--line-strong);
+  color: var(--copy);
+}
+
+.variant-neutral .button--solid {
+  background: var(--brand);
+}
+
+.variant-neutral .button--solid:hover {
+  background: var(--brand-strong);
+}
+
+.variant-neutral .button--outline {
+  border-color: var(--line-strong);
+  color: var(--ink);
+  background: var(--surface);
+}
+
+.variant-neutral .hero__ledger,
+.variant-neutral .problem__list article,
+.variant-neutral .compare__col,
+.variant-neutral .matrix,
+.variant-neutral .flow__step,
+.variant-neutral .dimension,
+.variant-neutral .dimension-cards div,
+.variant-neutral .kpi,
+.variant-neutral .testimonial,
+.variant-neutral .cta {
+  background: var(--surface);
+  border-color: var(--line);
+  box-shadow: var(--shadow-sm);
+}
+
+.variant-neutral .compare__col--legacy {
+  background: var(--surface-muted);
+}
+
+.variant-neutral .compare__col--supa {
+  background: var(--surface);
+  border-color: var(--line-strong);
+  box-shadow: 0 0 0 1px color-mix(in srgb, var(--line-strong) 55%, transparent 45%);
+}
+
+.variant-neutral .problem__list article > span,
+.variant-neutral .flow__step b,
+.variant-neutral .compare li span {
+  border-color: var(--line-strong);
+  background: var(--surface-muted);
+  color: var(--ink);
+}
+
+.variant-neutral th,
+.variant-neutral td:first-child {
+  background: var(--surface-muted);
+}
+
+.variant-neutral .dimension-tab.active {
+  background: var(--brand);
+  color: #fff;
+}
+
+.variant-neutral .results {
+  border-top: 1px solid var(--line);
+  border-bottom: 1px solid var(--line);
+}
+
+.variant-neutral .site-footer {
+  border-top: 1px solid var(--line);
+}
