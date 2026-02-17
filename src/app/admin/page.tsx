@@ -12,15 +12,18 @@ export default async function DashboardPage() {
         { count: inboundCount },
         { count: outboundCount },
         { count: qualifiedCount },
-        { count: orgCount }
+        { data: orgData }
     ] = await Promise.all([
         supabase.from('prospects').select('*', { count: 'exact', head: true }).eq('source', 'inbound'),
         supabase.from('prospects').select('*', { count: 'exact', head: true }).eq('source', 'outbound'),
         supabase.from('prospects')
             .select('*', { count: 'exact', head: true })
-            .or('and(source.eq.inbound,status.neq.new_inquiry),and(source.eq.outbound,status.neq.pending)'),
-        supabase.from('organizations').select('*', { count: 'exact', head: true })
+            .not('qualified_at', 'is', null),
+        // Derive org count from prospects (organizations table has RLS the admin session can't bypass)
+        supabase.from('prospects').select('organization_id').not('organization_id', 'is', null)
     ])
+
+    const orgCount = new Set(orgData?.map(p => p.organization_id)).size
 
     const stats = [
         {

@@ -6,13 +6,14 @@ export const dynamic = 'force-dynamic'
 export default async function NewInquiriesPage() {
     const supabase = await createClient()
 
-    // New Inquiries:
-    // Status = 'new_inquiry' (these are users who signed up but haven't clicked Generate Report yet)
+    // New Inquiries: Inbound users who signed up but haven't visited dashboard yet
+    // Filter: source = 'inbound' AND qualified_at IS NULL
 
     const { data: prospects, error } = await supabase
         .from('prospects')
         .select('*')
-        .eq('status', 'new_inquiry')
+        .eq('source', 'inbound')
+        .is('qualified_at', null)
         .order('created_at', { ascending: false })
 
     if (error) {

@@ -21,8 +21,11 @@ import {
     Save,
     FileText,
     ChevronDown,
+    ChevronLeft,
+    ChevronRight,
     ExternalLink,
-    AlertTriangle
+    AlertTriangle,
+    RefreshCw
 } from 'lucide-react'
 import { toast } from 'sonner'
 import { cn } from '@/lib/utils'
@@ -61,6 +64,10 @@ export default function DashboardClient({
     const [deletingProspect, setDeletingProspect] = useState<Prospect | null>(null)
     const [uploadMode, setUploadMode] = useState<'single' | 'bulk'>('single')
 
+    const [currentPage, setCurrentPage] = useState(1)
+    const [isRefreshing, setIsRefreshing] = useState(false)
+    const ITEMS_PER_PAGE = 15
+
     const [formData, setFormData] = useState({
         company_name: '',
         company_domain: '',
@@ -70,11 +77,15 @@ export default function DashboardClient({
         contact_linkedin: ''
     })
 
-
-
     const fileInputRef = useRef<HTMLInputElement>(null)
     const router = useRouter()
     const [supabase] = useState(() => createClient())
+
+    // Sync prospects when server data changes (e.g. after router.refresh())
+    useEffect(() => {
+        setProspects(initialProspects)
+        setCurrentPage(1)
+    }, [initialProspects])
 
     useEffect(() => {
         const channel = supabase.channel('prospect-updates')
@@ -304,19 +315,27 @@ export default function DashboardClient({
     }
 
     const handleExecute = async () => {
-        if (selectedIds.size === 0) return
+        // Filter out completed/processing prospects from selection
+        const executableIds = Array.from(selectedIds).filter(id => {
+            const p = prospects.find(pr => pr.id === id)
+            return p && p.status !== 'completed' && p.status !== 'processing'
+        })
+        if (executableIds.length === 0) {
+            toast.error('No eligible prospects to execute (already completed or processing)')
+            return
+        }
         setIsLoading(true)
 
         try {
             const response = await fetch('/api/execute-scans', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ prospectIds: Array.from(selectedIds) }),
+                body: JSON.stringify({ prospectIds: executableIds }),
             })
 
             if (!response.ok) throw new Error('Execution failed')
 
-            toast.success(`Started processing ${selectedIds.size} prospects`)
+            toast.success(`Started processing ${executableIds.length} prospects`)
             setSelectedIds(new Set())
             router.refresh()
         } catch (error) {
@@ -325,6 +344,47 @@ export default function DashboardClient({
         } finally {
             setIsLoading(false)
         }
+    }
+
+    const [executingId, setExecutingId] = useState<string | null>(null)
+
+    const handleExecuteSingle = async (prospectId: string, e: React.MouseEvent) => {
+        e.stopPropagation()
+        setExecutingId(prospectId)
+
+        try {
+            const response = await fetch('/api/execute-scans', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ prospectIds: [prospectId] }),
+            })
+
+            if (!response.ok) throw new Error('Execution failed')
+
+            toast.success('Report generation started')
+            router.refresh()
+        } catch (error) {
+            console.error('Execute error:', error)
+            toast.error('Failed to execute scan')
+        } finally {
+            setExecutingId(null)
+        }
+    }
+
+    // Pagination
+    const totalPages = Math.max(1, Math.ceil(prospects.length / ITEMS_PER_PAGE))
+    const startIndex = (currentPage - 1) * ITEMS_PER_PAGE
+    const endIndex = startIndex + ITEMS_PER_PAGE
+    const paginatedProspects = prospects.slice(startIndex, endIndex)
+
+    const handleRefresh = async () => {
+        setIsRefreshing(true)
+        router.refresh()
+        // Brief visual feedback
+        setTimeout(() => {
+            setIsRefreshing(false)
+            toast.success('List refreshed')
+        }, 800)
     }
 
     const toggleSelect = (id: string) => {
@@ -716,21 +776,36 @@ export default function DashboardClient({
                 <div className="bg-white rounded-2xl border border-gray-200 overflow-hidden shadow-sm">
                     {/* Table Header */}
                     <div className="px-6 py-3 border-b border-gray-200 flex items-center justify-between bg-gray-50/50">
-                        <div className="flex items-center gap-2">
-                            <Search className="w-3.5 h-3.5 text-gray-400" />
-                            <span className="text-xs font-medium text-gray-500 uppercase tracking-wider">
-                                {prospects.length} {prospects.length === 1 ? 'Prospect' : 'Prospects'}
-                            </span>
-                        </div>
-                        {selectedIds.size > 0 && (
+                        <div className="flex items-center gap-3">
+                            <div className="flex items-center gap-2">
+                                <Search className="w-3.5 h-3.5 text-gray-400" />
+                                <span className="text-xs font-medium text-gray-500 uppercase tracking-wider">
+                                    {prospects.length} {prospects.length === 1 ? 'Prospect' : 'Prospects'}
+                                </span>
+                            </div>
                             <button
-                                onClick={handleExecute}
-                                disabled={isLoading}
-                                className="px-3 py-1.5 bg-blue-600 hover:bg-blue-700 text-white rounded-lg text-xs font-medium transition-all shadow-sm disabled:opacity-50 flex items-center gap-1.5"
+                                onClick={handleRefresh}
+                                disabled={isRefreshing}
+                                className="p-1.5 hover:bg-gray-200 rounded-lg text-gray-400 hover:text-gray-600 transition-all"
+                                title="Refresh list"
                             >
-                                {isLoading ? <Loader2 className="w-3 h-3 animate-spin" /> : <Play className="w-3 h-3" />}
-                                Execute ({selectedIds.size})
+                                <RefreshCw className={cn("w-3.5 h-3.5", isRefreshing && "animate-spin")} />
                             </button>
+                        </div>
+                        {selectedIds.size > 0 ? (
+                            <div className="flex items-center gap-3">
+                                <span className="text-xs text-blue-600 font-medium">{selectedIds.size} selected</span>
+                                <button
+                                    onClick={handleExecute}
+                                    disabled={isLoading}
+                                    className="px-3 py-1.5 bg-blue-600 hover:bg-blue-700 text-white rounded-lg text-xs font-medium transition-all shadow-sm disabled:opacity-50 flex items-center gap-1.5"
+                                >
+                                    {isLoading ? <Loader2 className="w-3 h-3 animate-spin" /> : <Play className="w-3 h-3" />}
+                                    Execute ({selectedIds.size})
+                                </button>
+                            </div>
+                        ) : (
+                            <span className="text-[10px] text-gray-400">Select rows to bulk execute, or use per-row actions</span>
                         )}
                     </div>
 
@@ -757,7 +832,7 @@ export default function DashboardClient({
                                 </tr>
                             </thead>
                             <tbody className="divide-y divide-gray-100">
-                                {prospects.map((prospect) => (
+                                {paginatedProspects.map((prospect) => (
                                     <tr
                                         key={prospect.id}
                                         className={cn(
@@ -824,7 +899,23 @@ export default function DashboardClient({
                                             </div>
                                         </td>
                                         <td className="py-3 px-6">
-                                            <div className="flex items-center justify-end gap-1 opacity-100">
+                                            <div className="flex items-center justify-end gap-1">
+                                                {/* Execute button — only for non-completed, non-processing */}
+                                                {prospect.status !== 'completed' && prospect.status !== 'processing' && (
+                                                    <button
+                                                        className="p-1.5 hover:bg-blue-50 rounded-lg text-blue-500 hover:text-blue-700 transition-all"
+                                                        onClick={(e) => handleExecuteSingle(prospect.id, e)}
+                                                        disabled={executingId === prospect.id}
+                                                        title="Execute scan"
+                                                    >
+                                                        {executingId === prospect.id ? (
+                                                            <Loader2 className="w-3.5 h-3.5 animate-spin" />
+                                                        ) : (
+                                                            <Play className="w-3.5 h-3.5" />
+                                                        )}
+                                                    </button>
+                                                )}
+                                                {/* View report — only for completed */}
                                                 {prospect.status === 'completed' && (
                                                     <a
                                                         href={`/report/${prospect.id}`}
@@ -889,6 +980,63 @@ export default function DashboardClient({
                             </tbody>
                         </table>
                     </div>
+
+                    {/* Pagination */}
+                    {prospects.length > ITEMS_PER_PAGE && (
+                        <div className="px-6 py-3 border-t border-gray-200 flex items-center justify-between bg-gray-50/50">
+                            <span className="text-xs text-gray-500">
+                                Showing {startIndex + 1}-{Math.min(endIndex, prospects.length)} of {prospects.length}
+                            </span>
+                            <div className="flex items-center gap-1">
+                                <button
+                                    onClick={() => setCurrentPage(p => Math.max(1, p - 1))}
+                                    disabled={currentPage === 1}
+                                    className="p-1.5 hover:bg-gray-200 rounded-lg text-gray-500 hover:text-gray-700 transition-all disabled:opacity-30 disabled:hover:bg-transparent"
+                                >
+                                    <ChevronLeft className="w-4 h-4" />
+                                </button>
+                                {Array.from({ length: totalPages }, (_, i) => i + 1)
+                                    .filter(page => {
+                                        // Show first, last, and pages near current
+                                        if (page === 1 || page === totalPages) return true
+                                        if (Math.abs(page - currentPage) <= 1) return true
+                                        return false
+                                    })
+                                    .reduce<(number | string)[]>((acc, page, i, arr) => {
+                                        if (i > 0 && page - (arr[i - 1] as number) > 1) {
+                                            acc.push('...')
+                                        }
+                                        acc.push(page)
+                                        return acc
+                                    }, [])
+                                    .map((page, i) =>
+                                        page === '...' ? (
+                                            <span key={`dots-${i}`} className="px-1 text-xs text-gray-400">...</span>
+                                        ) : (
+                                            <button
+                                                key={page}
+                                                onClick={() => setCurrentPage(page as number)}
+                                                className={cn(
+                                                    "min-w-[28px] h-7 rounded-lg text-xs font-medium transition-all",
+                                                    currentPage === page
+                                                        ? "bg-blue-600 text-white shadow-sm"
+                                                        : "text-gray-600 hover:bg-gray-200"
+                                                )}
+                                            >
+                                                {page}
+                                            </button>
+                                        )
+                                    )}
+                                <button
+                                    onClick={() => setCurrentPage(p => Math.min(totalPages, p + 1))}
+                                    disabled={currentPage === totalPages}
+                                    className="p-1.5 hover:bg-gray-200 rounded-lg text-gray-500 hover:text-gray-700 transition-all disabled:opacity-30 disabled:hover:bg-transparent"
+                                >
+                                    <ChevronRight className="w-4 h-4" />
+                                </button>
+                            </div>
+                        </div>
+                    )}
                 </div>
             </div>
 

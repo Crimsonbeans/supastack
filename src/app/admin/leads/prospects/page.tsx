@@ -6,13 +6,13 @@ export const dynamic = 'force-dynamic'
 export default async function ProspectsPage() {
     const supabase = await createClient()
 
-    // Prospects: Outbound list (manually added)
-    // Filter: source = 'outbound' AND status = 'pending' (not yet engaged/processed)
+    // Prospects: Outbound list (manually added, not yet qualified)
+    // Filter: source = 'outbound' AND qualified_at IS NULL (no user has signed up yet)
     const { data: prospects, error } = await supabase
         .from('prospects')
         .select('*')
         .eq('source', 'outbound')
-        .eq('status', 'pending')
+        .is('qualified_at', null)
         .order('created_at', { ascending: false })
 
     if (error) {
