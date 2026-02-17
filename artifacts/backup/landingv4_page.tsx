@@ -47,7 +47,7 @@ const NAV_LINKS = [
     { href: "#services", label: "Service Model" },
     { href: "#dimensions", label: "Dimensions" },
     { href: "#results", label: "Results" },
-    { href: "#cta", label: "Get Started" },
+    { href: "/signup", label: "Get Started" },
 ];
 
 const PROBLEM_POINTS = [
@@ -198,13 +198,18 @@ export default function LandingV4() {
                         </ul>
                     </nav>
 
-                    {/* Mobile Menu Toggle */}
-                    <button
-                        className="md:hidden p-2 text-slate-600"
-                        onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
-                    >
-                        {mobileMenuOpen ? <X /> : <Menu />}
-                    </button>
+                    <div className="flex items-center gap-4">
+                        <Link href="/login" className="hidden md:inline-flex text-sm font-medium text-slate-600 hover:text-indigo-600 transition-colors">
+                            Sign In
+                        </Link>
+                        {/* Mobile Menu Toggle */}
+                        <button
+                            className="md:hidden p-2 text-slate-600"
+                            onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
+                        >
+                            {mobileMenuOpen ? <X /> : <Menu />}
+                        </button>
+                    </div>
                 </div>
 
                 {/* Mobile Nav */}
@@ -228,6 +233,11 @@ export default function LandingV4() {
                                         </Link>
                                     </li>
                                 ))}
+                                <li className="pt-2 border-t border-slate-100">
+                                    <Link href="/login" className="block text-lg font-medium text-indigo-600" onClick={() => setMobileMenuOpen(false)}>
+                                        Sign In
+                                    </Link>
+                                </li>
                             </ul>
                         </motion.div>
                     )}
@@ -253,7 +263,7 @@ export default function LandingV4() {
                                 SupaStack replaces slow, expensive discovery with AI-powered, evidence-led GTM transformation. Build the revenue engine that connects marketing, sales, and customer success — in weeks, not months.
                             </p>
                             <div className="flex flex-col sm:flex-row gap-4 pt-4">
-                                <Link href="#cta" className="inline-flex items-center justify-center h-14 px-8 rounded-xl bg-indigo-600 text-white font-semibold hover:bg-indigo-700 transition-all shadow-lg shadow-indigo-200 hover:shadow-indigo-300 transform hover:-translate-y-0.5">
+                                <Link href="/signup" className="inline-flex items-center justify-center h-14 px-8 rounded-xl bg-indigo-600 text-white font-semibold hover:bg-indigo-700 transition-all shadow-lg shadow-indigo-200 hover:shadow-indigo-300 transform hover:-translate-y-0.5">
                                     Get Your Free Web Scan <ArrowRight className="ml-2 h-5 w-5" />
                                 </Link>
                                 <Link href="#services" className="inline-flex items-center justify-center h-14 px-8 rounded-xl bg-white border border-slate-200 text-slate-700 font-semibold hover:bg-slate-50 hover:border-slate-300 transition-all">
@@ -636,9 +646,9 @@ export default function LandingV4() {
                                 <p className="text-xl md:text-2xl text-indigo-100 mb-12 leading-relaxed">See your readiness score across 6 dimensions, your competitive gaps vs. 5 peers, and your top 3 quick wins — in minutes, not months.</p>
 
                                 <div className="flex flex-col sm:flex-row gap-4 justify-center">
-                                    <a href="mailto:hello@supastack.com" className="inline-flex items-center justify-center h-16 px-10 rounded-xl bg-white text-indigo-700 font-bold text-lg hover:bg-indigo-50 transition-colors shadow-lg">
+                                    <Link href="/signup" className="inline-flex items-center justify-center h-16 px-10 rounded-xl bg-white text-indigo-700 font-bold text-lg hover:bg-indigo-50 transition-colors shadow-lg">
                                         Get My Free Assessment
-                                    </a>
+                                    </Link>
                                     <a href="#services" className="inline-flex items-center justify-center h-16 px-10 rounded-xl bg-transparent border-2 border-indigo-400 text-white font-bold text-lg hover:bg-indigo-700/50 hover:border-indigo-300 transition-colors">
                                         Review the process
                                     </a>

@@ -4,7 +4,7 @@ import { useState, Suspense } from 'react'
 import { createClient } from '@/lib/supabase/client'
 import { useRouter, useSearchParams } from 'next/navigation'
 import Link from 'next/link'
-import { Loader2, Mail, Sparkles } from 'lucide-react'
+import { Loader2, Mail, Sparkles, ArrowLeft, Quote } from 'lucide-react'
 
 // Blocklist of non-business / disposable domains
 const BLOCKED_DOMAINS = new Set([
@@ -49,6 +49,12 @@ function validateEmail(email: string): string | null {
     if (!EMAIL_REGEX.test(email)) return 'Please enter a valid email address'
     return null
 }
+
+const STATS = [
+    { value: '£2.4M', label: 'Pipeline identified in 90 days' },
+    { value: '67%', label: 'Faster than traditional consulting' },
+    { value: '3 of 3', label: 'Pilots succeeded (vs 5% avg)' },
+]
 
 function SignupContent() {
     const searchParams = useSearchParams()
@@ -149,33 +155,33 @@ function SignupContent() {
 
     if (success) {
         return (
-            <div className="w-full max-w-md space-y-8 bg-zinc-900/50 p-8 rounded-2xl border border-zinc-800 backdrop-blur-xl text-center">
+            <div className="w-full max-w-md space-y-8 bg-white p-10 rounded-2xl border border-slate-200 shadow-sm text-center">
                 <div className="flex justify-center">
-                    <div className="w-16 h-16 bg-indigo-500/10 rounded-full flex items-center justify-center text-indigo-400 border border-indigo-500/20">
+                    <div className="w-16 h-16 bg-indigo-50 rounded-full flex items-center justify-center text-indigo-500 border border-indigo-100">
                         <Mail className="w-8 h-8" />
                     </div>
                 </div>
 
                 <div className="space-y-3">
-                    <h2 className="text-2xl font-bold text-white">Check Your Inbox</h2>
-                    <p className="text-zinc-400">
-                        We've sent a verification link to <span className="text-white font-medium">{email}</span>.
+                    <h2 className="text-2xl font-bold text-slate-900">Check Your Inbox</h2>
+                    <p className="text-slate-500">
+                        We&apos;ve sent a verification link to <span className="text-slate-900 font-medium">{email}</span>.
                     </p>
-                    <p className="text-sm text-zinc-300">
-                        Click the link in your email and you'll be taken directly to your report — no need to sign in again.
+                    <p className="text-sm text-slate-600">
+                        Click the link in your email and you&apos;ll be taken directly to your report — no need to sign in again.
                     </p>
                 </div>
 
                 <div className="pt-4 space-y-4">
-                    <div className="flex items-center gap-3 px-4 py-3 bg-indigo-500/10 border border-indigo-500/20 rounded-lg text-sm text-indigo-300">
+                    <div className="flex items-center gap-3 px-4 py-3 bg-indigo-50 border border-indigo-100 rounded-xl text-sm text-indigo-600">
                         <Sparkles className="w-5 h-5 shrink-0" />
                         <span>Your report is already being generated in the background!</span>
                     </div>
-                    <p className="text-xs text-zinc-600">
-                        Didn't receive the email? Check your spam folder.
+                    <p className="text-xs text-slate-400">
+                        Didn&apos;t receive the email? Check your spam folder.
                     </p>
-                    <p className="text-xs text-zinc-700">
-                        Already verified? <Link href="/login" className="text-zinc-400 hover:text-white underline">Sign in</Link>
+                    <p className="text-xs text-slate-400">
+                        Already verified? <Link href="/login" className="text-indigo-600 hover:text-indigo-700 underline">Sign in</Link>
                     </p>
                 </div>
             </div>
@@ -183,82 +189,86 @@ function SignupContent() {
     }
 
     return (
-        <div className="w-full max-w-sm space-y-8 bg-zinc-900/50 p-8 rounded-2xl border border-zinc-800 backdrop-blur-xl">
-            <div className="text-center space-y-2">
-                <h1 className="text-2xl font-bold">Create Account</h1>
-                <p className="text-zinc-400">Get your GTM & AI Readiness Report.</p>
+        <div className="w-full max-w-sm space-y-7">
+            <div className="space-y-2">
+                <h1 className="text-3xl font-bold text-slate-900">Create your account</h1>
+                <p className="text-slate-500">Get your GTM &amp; AI Readiness Report.</p>
             </div>
 
             <form onSubmit={handleSignup} className="space-y-4">
                 <div>
-                    <label className="block text-sm font-medium text-zinc-400 mb-1">Full Name</label>
+                    <label className="block text-sm font-medium text-slate-700 mb-1.5">Full Name</label>
                     <input
                         type="text"
                         value={fullName}
                         onChange={(e) => setFullName(e.target.value)}
-                        className="w-full bg-zinc-950 border border-zinc-800 rounded-lg p-3 text-white focus:ring-2 focus:ring-indigo-500 focus:outline-none"
+                        className="w-full bg-white border border-slate-200 rounded-xl p-3.5 text-slate-900 placeholder:text-slate-400 focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 focus:outline-none transition-all"
+                        placeholder="Jane Smith"
                         required
                     />
                 </div>
                 <div>
-                    <label className="block text-sm font-medium text-zinc-400 mb-1">Company Name</label>
+                    <label className="block text-sm font-medium text-slate-700 mb-1.5">Company Name</label>
                     <input
                         type="text"
                         value={companyName}
                         onChange={(e) => setCompanyName(e.target.value)}
-                        className="w-full bg-zinc-950 border border-zinc-800 rounded-lg p-3 text-white focus:ring-2 focus:ring-indigo-500 focus:outline-none"
+                        className="w-full bg-white border border-slate-200 rounded-xl p-3.5 text-slate-900 placeholder:text-slate-400 focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 focus:outline-none transition-all"
+                        placeholder="Acme Inc"
                         required
                     />
                 </div>
                 <div>
-                    <label className="block text-sm font-medium text-zinc-400 mb-1">Company Domain</label>
+                    <label className="block text-sm font-medium text-slate-700 mb-1.5">Company Domain</label>
                     <input
                         type="text"
                         value={companyDomain}
                         onChange={(e) => handleDomainChange(e.target.value)}
                         onBlur={handleDomainBlur}
                         placeholder="e.g. yourcompany.com"
-                        className={`w-full bg-zinc-950 border rounded-lg p-3 text-white focus:ring-2 focus:ring-indigo-500 focus:outline-none ${domainError ? 'border-red-500' : 'border-zinc-800'}`}
+                        className={`w-full bg-white border rounded-xl p-3.5 text-slate-900 placeholder:text-slate-400 focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 focus:outline-none transition-all ${domainError ? 'border-red-400' : 'border-slate-200'}`}
                         required
                     />
-                    {domainError && <p className="text-red-400 text-xs mt-1">{domainError}</p>}
+                    {domainError && <p className="text-red-500 text-xs mt-1.5">{domainError}</p>}
                 </div>
                 <div>
-                    <label className="block text-sm font-medium text-zinc-400 mb-1">Email</label>
+                    <label className="block text-sm font-medium text-slate-700 mb-1.5">Email</label>
                     <input
                         type="email"
                         value={email}
                         onChange={(e) => handleEmailChange(e.target.value)}
                         onBlur={handleEmailBlur}
-                        className={`w-full bg-zinc-950 border rounded-lg p-3 text-white focus:ring-2 focus:ring-indigo-500 focus:outline-none ${emailError ? 'border-red-500' : 'border-zinc-800'}`}
+                        placeholder="you@company.com"
+                        className={`w-full bg-white border rounded-xl p-3.5 text-slate-900 placeholder:text-slate-400 focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 focus:outline-none transition-all ${emailError ? 'border-red-400' : 'border-slate-200'}`}
                         required
                     />
-                    {emailError && <p className="text-red-400 text-xs mt-1">{emailError}</p>}
+                    {emailError && <p className="text-red-500 text-xs mt-1.5">{emailError}</p>}
                 </div>
                 <div>
-                    <label className="block text-sm font-medium text-zinc-400 mb-1">Password</label>
+                    <label className="block text-sm font-medium text-slate-700 mb-1.5">Password</label>
                     <input
                         type="password"
                         value={password}
                         onChange={(e) => setPassword(e.target.value)}
-                        className="w-full bg-zinc-950 border border-zinc-800 rounded-lg p-3 text-white focus:ring-2 focus:ring-indigo-500 focus:outline-none"
+                        className="w-full bg-white border border-slate-200 rounded-xl p-3.5 text-slate-900 placeholder:text-slate-400 focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 focus:outline-none transition-all"
                         required
                     />
                 </div>
 
-                {error && <p className="text-red-400 text-sm">{error}</p>}
+                {error && <p className="text-red-500 text-sm">{error}</p>}
 
                 <button
                     type="submit"
                     disabled={loading}
-                    className="w-full bg-white text-black font-bold py-3 rounded-lg hover:bg-zinc-200 transition-colors disabled:opacity-50 flex justify-center items-center"
+                    className="w-full bg-gradient-to-r from-indigo-600 to-violet-600 text-white font-semibold py-3.5 rounded-xl hover:shadow-lg hover:shadow-indigo-500/25 transition-all disabled:opacity-50 flex justify-center items-center"
                 >
                     {loading ? <Loader2 className="animate-spin w-5 h-5" /> : 'Sign Up'}
                 </button>
             </form>
 
-            <div className="text-center text-sm text-zinc-500">
-                Already have an account? <Link href="/login" className="text-white hover:underline">Sign in</Link>
+            <div className="text-center text-sm text-slate-500">
+                Already have an account?{' '}
+                <Link href="/login" className="text-indigo-600 font-medium hover:text-indigo-700 transition-colors">Sign in</Link>
             </div>
         </div>
     )
@@ -266,23 +276,93 @@ function SignupContent() {
 
 export default function SignupPage() {
     return (
-        <div className="min-h-screen flex items-center justify-center bg-black text-white p-4 relative">
-            {/* Top Left Logo */}
-            <Link href="/" className="absolute top-6 left-6 text-xl font-bold tracking-tight hover:opacity-80 transition-opacity">
-                SUPASTACK
-            </Link>
+        <div className="min-h-screen flex bg-white">
+            {/* Left Panel — Decorative */}
+            <div className="hidden lg:flex lg:w-[45%] relative bg-gradient-to-br from-slate-50 via-white to-indigo-50/40 flex-col justify-between p-12 overflow-hidden border-r border-slate-100">
+                {/* Gradient orbs */}
+                <div className="absolute inset-0 overflow-hidden pointer-events-none">
+                    <div
+                        className="absolute w-[400px] h-[400px] rounded-full blur-[120px] opacity-30"
+                        style={{ top: '-10%', right: '10%', background: 'radial-gradient(circle, #c7d2fe, transparent 70%)' }}
+                    />
+                    <div
+                        className="absolute w-[300px] h-[300px] rounded-full blur-[100px] opacity-20"
+                        style={{ bottom: '5%', left: '-5%', background: 'radial-gradient(circle, #ddd6fe, transparent 70%)' }}
+                    />
+                </div>
 
-            {/* Top Right Close Icon */}
-            <Link href="/" className="absolute top-6 right-6 p-2 text-zinc-400 hover:text-white transition-colors">
-                <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                    <line x1="18" y1="6" x2="6" y2="18"></line>
-                    <line x1="6" y1="6" x2="18" y2="18"></line>
-                </svg>
-            </Link>
+                {/* Grid pattern */}
+                <div
+                    className="absolute inset-0 opacity-[0.03]"
+                    style={{ backgroundImage: 'linear-gradient(rgba(99,102,241,.08) 1px, transparent 1px), linear-gradient(90deg, rgba(99,102,241,.08) 1px, transparent 1px)', backgroundSize: '60px 60px' }}
+                />
 
-            <Suspense fallback={<div className="text-white"><Loader2 className="animate-spin" /></div>}>
-                <SignupContent />
-            </Suspense>
+                <div className="relative z-10 flex flex-col h-full">
+                    {/* Logo */}
+                    <Link href="/" className="text-2xl font-bold tracking-tighter text-slate-900">
+                        SupaStack
+                    </Link>
+
+                    {/* Center content */}
+                    <div className="flex-1 flex flex-col justify-center max-w-sm">
+                        <h2 className="text-3xl font-bold text-slate-900 leading-snug mb-3">
+                            See where you stand. In minutes.
+                        </h2>
+                        <p className="text-slate-500 mb-10 leading-relaxed">
+                            AI-powered, evidence-led GTM transformation. No interviews. No guesswork. Just signal.
+                        </p>
+
+                        {/* Stats */}
+                        <div className="space-y-6 mb-10">
+                            {STATS.map((stat, i) => (
+                                <div key={i} className="flex items-center gap-4">
+                                    <span className="text-2xl font-bold text-transparent bg-clip-text bg-gradient-to-r from-indigo-600 to-violet-600 min-w-[80px]">
+                                        {stat.value}
+                                    </span>
+                                    <span className="text-slate-500 text-sm">{stat.label}</span>
+                                </div>
+                            ))}
+                        </div>
+
+                        {/* Testimonial */}
+                        <div className="pt-8 border-t border-slate-100">
+                            <Quote className="w-6 h-6 text-indigo-200 fill-indigo-200 mb-3" />
+                            <p className="text-slate-600 text-sm italic leading-relaxed">
+                                &ldquo;SupaStack is the first partner that gave us live ROI guardrails. We green-lit pilots knowing exactly where the returns would land.&rdquo;
+                            </p>
+                            <span className="text-xs font-bold text-slate-400 uppercase tracking-wider mt-3 block">
+                                COO &middot; Manufacturing Services &middot; £80M revenue
+                            </span>
+                        </div>
+                    </div>
+
+                    {/* Bottom */}
+                    <p className="text-xs text-slate-400">
+                        Trusted by revenue leaders at mid-market companies
+                    </p>
+                </div>
+            </div>
+
+            {/* Right Panel — Form */}
+            <div className="flex-1 flex flex-col min-h-screen">
+                {/* Top bar */}
+                <div className="flex items-center justify-between p-6">
+                    <Link href="/" className="lg:hidden text-xl font-bold tracking-tighter text-slate-900">
+                        SupaStack
+                    </Link>
+                    <Link href="/" className="flex items-center gap-2 text-sm text-slate-400 hover:text-slate-600 transition-colors ml-auto">
+                        <ArrowLeft className="w-4 h-4" />
+                        Back to home
+                    </Link>
+                </div>
+
+                {/* Form centered */}
+                <div className="flex-1 flex items-center justify-center px-6 md:px-12">
+                    <Suspense fallback={<div className="text-slate-400"><Loader2 className="animate-spin" /></div>}>
+                        <SignupContent />
+                    </Suspense>
+                </div>
+            </div>
         </div>
     )
 }
