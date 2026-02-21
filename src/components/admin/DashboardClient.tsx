@@ -29,6 +29,7 @@ import {
 } from 'lucide-react'
 import { toast } from 'sonner'
 import { cn } from '@/lib/utils'
+import ConvertToCustomerButton from './ConvertToCustomerButton'
 
 type Prospect = {
     id: string
@@ -40,21 +41,27 @@ type Prospect = {
     contact_linkedin?: string | null
     status: string
     confidence_score: number
+    report_html?: string | null
+    organization_id?: string | null
+    qualified_at?: string | null
 }
 
 export default function DashboardClient({
     initialProspects,
     title = 'Prospects',
     subtitle = 'Manage your pipeline',
-    allowAdd = true
+    allowAdd = true,
+    isQualifiedView = false
 }: {
     initialProspects: Prospect[],
     title?: string,
     subtitle?: string,
-    allowAdd?: boolean
+    allowAdd?: boolean,
+    isQualifiedView?: boolean
 }) {
     const [prospects, setProspects] = useState<Prospect[]>(initialProspects)
     const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set())
+    const [selectedForConversion, setSelectedForConversion] = useState<string | null>(null)
     const [isLoading, setIsLoading] = useState(false)
     const [isUploading, setIsUploading] = useState(false)
     const [showCreateScreen, setShowCreateScreen] = useState(false)
@@ -761,15 +768,28 @@ export default function DashboardClient({
                         <h1 className="text-2xl font-bold text-foreground tracking-tight mb-1">{title}</h1>
                         <p className="text-xs text-muted-foreground">{subtitle}</p>
                     </div>
-                    {allowAdd && (
-                        <button
-                            onClick={() => setShowCreateScreen(true)}
-                            className="px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-lg text-sm font-medium transition-all shadow-sm flex items-center gap-2"
-                        >
-                            <Plus className="w-3.5 h-3.5" />
-                            New Prospect
-                        </button>
-                    )}
+                    <div className="flex items-center gap-3">
+                        {isQualifiedView && (
+                            <ConvertToCustomerButton
+                                prospect={selectedForConversion ? prospects.find(p => p.id === selectedForConversion)! : prospects[0]}
+                                onSuccess={() => {
+                                    setSelectedForConversion(null)
+                                    router.refresh()
+                                }}
+                                variant="large"
+                                disabled={!selectedForConversion}
+                            />
+                        )}
+                        {allowAdd && (
+                            <button
+                                onClick={() => setShowCreateScreen(true)}
+                                className="px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-lg text-sm font-medium transition-all shadow-sm flex items-center gap-2"
+                            >
+                                <Plus className="w-3.5 h-3.5" />
+                                New Prospect
+                            </button>
+                        )}
+                    </div>
                 </div>
 
                 {/* Bento Table Card */}
@@ -792,7 +812,7 @@ export default function DashboardClient({
                                 <RefreshCw className={cn("w-3.5 h-3.5", isRefreshing && "animate-spin")} />
                             </button>
                         </div>
-                        {selectedIds.size > 0 ? (
+                        {!isQualifiedView && selectedIds.size > 0 ? (
                             <div className="flex items-center gap-3">
                                 <span className="text-xs text-blue-600 font-medium">{selectedIds.size} selected</span>
                                 <button
@@ -804,8 +824,14 @@ export default function DashboardClient({
                                     Execute ({selectedIds.size})
                                 </button>
                             </div>
+                        ) : isQualifiedView && selectedForConversion ? (
+                            <span className="text-xs text-green-600 font-medium">
+                                {prospects.find(p => p.id === selectedForConversion)?.company_name} selected for conversion
+                            </span>
                         ) : (
-                            <span className="text-[10px] text-gray-400">Select rows to bulk execute, or use per-row actions</span>
+                            <span className="text-[10px] text-gray-400">
+                                {isQualifiedView ? 'Select a prospect to convert to customer' : 'Select rows to bulk execute, or use per-row actions'}
+                            </span>
                         )}
                     </div>
 
@@ -815,13 +841,15 @@ export default function DashboardClient({
                             <thead>
                                 <tr className="border-b border-gray-100 bg-gray-50">
                                     <th className="text-left py-3 px-6 w-10">
-                                        <button onClick={toggleSelectAll} className="hover:bg-gray-200 rounded p-1 transition-colors">
-                                            {selectedIds.size === prospects.length && prospects.length > 0 ? (
-                                                <CheckSquare className="w-4 h-4 text-blue-600" />
-                                            ) : (
-                                                <Square className="w-4 h-4 text-gray-400" />
-                                            )}
-                                        </button>
+                                        {!isQualifiedView && (
+                                            <button onClick={toggleSelectAll} className="hover:bg-gray-200 rounded p-1 transition-colors">
+                                                {selectedIds.size === prospects.length && prospects.length > 0 ? (
+                                                    <CheckSquare className="w-4 h-4 text-blue-600" />
+                                                ) : (
+                                                    <Square className="w-4 h-4 text-gray-400" />
+                                                )}
+                                            </button>
+                                        )}
                                     </th>
                                     <th className="text-left py-3 px-6 text-[10px] font-semibold text-gray-500 uppercase tracking-wider">Company</th>
                                     <th className="text-left py-3 px-6 text-[10px] font-semibold text-gray-500 uppercase tracking-wider">Domain</th>
@@ -837,18 +865,35 @@ export default function DashboardClient({
                                         key={prospect.id}
                                         className={cn(
                                             "group cursor-pointer transition-all hover:bg-gray-50",
-                                            selectedIds.has(prospect.id) && "bg-blue-50"
+                                            isQualifiedView
+                                                ? selectedForConversion === prospect.id && "bg-green-50"
+                                                : selectedIds.has(prospect.id) && "bg-blue-50"
                                         )}
-                                        onClick={() => toggleSelect(prospect.id)}
+                                        onClick={() => isQualifiedView ? setSelectedForConversion(selectedForConversion === prospect.id ? null : prospect.id) : toggleSelect(prospect.id)}
                                     >
                                         <td className="py-3 px-6" onClick={(e) => e.stopPropagation()}>
-                                            <button onClick={() => toggleSelect(prospect.id)} className="hover:bg-gray-200 rounded p-1 transition-colors">
-                                                {selectedIds.has(prospect.id) ? (
-                                                    <CheckSquare className="w-4 h-4 text-blue-600" />
-                                                ) : (
-                                                    <Square className="w-4 h-4 text-gray-400" />
-                                                )}
-                                            </button>
+                                            {isQualifiedView ? (
+                                                <button
+                                                    onClick={() => setSelectedForConversion(
+                                                        selectedForConversion === prospect.id ? null : prospect.id
+                                                    )}
+                                                    className="hover:bg-gray-200 rounded p-1 transition-colors"
+                                                >
+                                                    {selectedForConversion === prospect.id ? (
+                                                        <CheckSquare className="w-4 h-4 text-green-600" />
+                                                    ) : (
+                                                        <Square className="w-4 h-4 text-gray-400" />
+                                                    )}
+                                                </button>
+                                            ) : (
+                                                <button onClick={() => toggleSelect(prospect.id)} className="hover:bg-gray-200 rounded p-1 transition-colors">
+                                                    {selectedIds.has(prospect.id) ? (
+                                                        <CheckSquare className="w-4 h-4 text-blue-600" />
+                                                    ) : (
+                                                        <Square className="w-4 h-4 text-gray-400" />
+                                                    )}
+                                                </button>
+                                            )}
                                         </td>
                                         <td className="py-3 px-6">
                                             <div className="text-sm font-semibold text-gray-900">
@@ -900,8 +945,8 @@ export default function DashboardClient({
                                         </td>
                                         <td className="py-3 px-6">
                                             <div className="flex items-center justify-end gap-1">
-                                                {/* Execute button — only for non-completed, non-processing */}
-                                                {prospect.status !== 'completed' && prospect.status !== 'processing' && (
+                                                {/* Execute button — only for non-qualified view, non-completed, non-processing */}
+                                                {!isQualifiedView && prospect.status !== 'completed' && prospect.status !== 'processing' && (
                                                     <button
                                                         className="p-1.5 hover:bg-blue-50 rounded-lg text-blue-500 hover:text-blue-700 transition-all"
                                                         onClick={(e) => handleExecuteSingle(prospect.id, e)}
@@ -927,6 +972,15 @@ export default function DashboardClient({
                                                     >
                                                         <FileText className="w-3.5 h-3.5" />
                                                     </a>
+                                                )}
+                                                {/* Convert to Customer button - only for non-qualified view (qualified has it at top) */}
+                                                {!isQualifiedView && prospect.status === 'completed' && (
+                                                    <div onClick={(e) => e.stopPropagation()}>
+                                                        <ConvertToCustomerButton
+                                                            prospect={prospect}
+                                                            onSuccess={() => router.refresh()}
+                                                        />
+                                                    </div>
                                                 )}
                                                 <button
                                                     className="p-1.5 hover:bg-gray-100 rounded-lg text-gray-400 hover:text-blue-600 transition-all"

@@ -7,12 +7,14 @@ export default async function ProspectsPage() {
     const supabase = await createClient()
 
     // Prospects: Outbound list (manually added, not yet qualified)
-    // Filter: source = 'outbound' AND qualified_at IS NULL (no user has signed up yet)
+    // Filter: source = 'outbound' AND qualified_at IS NULL AND status != 'converted_to_customer'
+    // Note: Converted prospects are shown in /admin/customers instead
     const { data: prospects, error } = await supabase
         .from('prospects')
         .select('*')
         .eq('source', 'outbound')
         .is('qualified_at', null)
+        .neq('status', 'converted_to_customer')
         .order('created_at', { ascending: false })
 
     if (error) {

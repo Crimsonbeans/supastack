@@ -11,7 +11,8 @@ import {
     PieChart,
     LogOut,
     Menu,
-    CheckSquare
+    CheckSquare,
+    Users
 } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { logoutAdmin } from '@/app/controlpanel/actions'
@@ -32,6 +33,7 @@ function Sidebar({ isOpen, setIsOpen, collapsed, setCollapsed, adminName }: Side
         { name: 'Prospects (Outbound)', href: '/admin/leads/prospects', icon: Database },
         { name: 'New Inquiries', href: '/admin/leads/inquiries', icon: Inbox },
         { name: 'Qualified Leads', href: '/admin/leads/qualified', icon: CheckSquare },
+        { name: 'Customers', href: '/admin/customers', icon: Users },
         { name: 'Reports', href: '#', icon: FileBarChart, disabled: true },
         { name: 'Analytics', href: '#', icon: PieChart, disabled: true },
     ]
@@ -176,8 +178,16 @@ function Sidebar({ isOpen, setIsOpen, collapsed, setCollapsed, adminName }: Side
 }
 
 export default function AdminLayoutContent({ children, adminName }: { children: React.ReactNode, adminName: string }) {
+    const pathname = usePathname()
     const [sidebarOpen, setSidebarOpen] = useState(false)
     const [sidebarCollapsed, setSidebarCollapsed] = useState(true)
+
+    // Full-screen mode for report pages (no sidebar, no padding)
+    const isFullScreen = pathname.includes('/report')
+
+    if (isFullScreen) {
+        return <>{children}</>
+    }
 
     return (
         <div className="flex min-h-screen bg-[hsl(var(--main-background))] text-slate-900 font-sans">

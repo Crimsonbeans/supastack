@@ -7,13 +7,15 @@ export default async function NewInquiriesPage() {
     const supabase = await createClient()
 
     // New Inquiries: Inbound users who signed up but haven't visited dashboard yet
-    // Filter: source = 'inbound' AND qualified_at IS NULL
+    // Filter: source = 'inbound' AND qualified_at IS NULL AND status != 'converted_to_customer'
+    // Note: Converted prospects are shown in /admin/customers instead
 
     const { data: prospects, error } = await supabase
         .from('prospects')
         .select('*')
         .eq('source', 'inbound')
         .is('qualified_at', null)
+        .neq('status', 'converted_to_customer')
         .order('created_at', { ascending: false })
 
     if (error) {

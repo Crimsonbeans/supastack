@@ -1,0 +1,747 @@
+{
+  "updatedAt": "2026-02-21T15:48:36.706Z",
+  "createdAt": "2026-02-19T12:31:47.841Z",
+  "id": "eJQAcBlb45pMvMFw",
+  "name": "Phase 2 - Requirements Generator ANKITUSE",
+  "description": null,
+  "active": false,
+  "isArchived": false,
+  "nodes": [
+    {
+      "parameters": {
+        "httpMethod": "POST",
+        "path": "512cf2e3-db3f-4277-9017-7a95b5b49add",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 2,
+      "position": [
+        -1904,
+        240
+      ],
+      "id": "47229d25-7157-4713-b0e1-b4a56c6ae322",
+      "name": "Webhook",
+      "webhookId": "512cf2e3-db3f-4277-9017-7a95b5b49add"
+    },
+    {
+      "parameters": {
+        "operation": "get",
+        "tableId": "assessments",
+        "filters": {
+          "conditions": [
+            {
+              "keyName": "id",
+              "keyValue": "={{ $json.body.assessment_id }}"
+            }
+          ]
+        }
+      },
+      "type": "n8n-nodes-base.supabase",
+      "typeVersion": 1,
+      "position": [
+        -1664,
+        240
+      ],
+      "id": "07063234-dfce-4a6f-a34e-7f58ba0deb27",
+      "name": "Fetch Assessment",
+      "credentials": {
+        "supabaseApi": {
+          "id": "FTSugGkqwnuu6irz",
+          "name": "SupaStack"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "operation": "getAll",
+        "tableId": "assessment_versions",
+        "filters": {
+          "conditions": [
+            {
+              "keyName": "assessment_id",
+              "condition": "eq",
+              "keyValue": "={{ $json.id }}"
+            }
+          ]
+        }
+      },
+      "type": "n8n-nodes-base.supabase",
+      "typeVersion": 1,
+      "position": [
+        -1440,
+        240
+      ],
+      "id": "b91db94a-ec89-46a6-af56-1ad312055316",
+      "name": "Fetch Latest Version",
+      "credentials": {
+        "supabaseApi": {
+          "id": "FTSugGkqwnuu6irz",
+          "name": "SupaStack"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "operation": "get",
+        "tableId": "dimension_analyses",
+        "filters": {
+          "conditions": [
+            {
+              "keyName": "version_id",
+              "keyValue": "={{ $json.id }}"
+            }
+          ]
+        }
+      },
+      "type": "n8n-nodes-base.supabase",
+      "typeVersion": 1,
+      "position": [
+        -992,
+        80
+      ],
+      "id": "e6ca34c1-b943-444c-8179-ae75d9d3845f",
+      "name": "Fetch Dimension Analyses",
+      "credentials": {
+        "supabaseApi": {
+          "id": "FTSugGkqwnuu6irz",
+          "name": "SupaStack"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "operation": "get",
+        "tableId": "playbook_industry_variants",
+        "filters": {
+          "conditions": [
+            {
+              "keyName": "id",
+              "keyValue": "={{ $('Fetch Assessment').item.json.playbook_variant_id }}"
+            }
+          ]
+        }
+      },
+      "type": "n8n-nodes-base.supabase",
+      "typeVersion": 1,
+      "position": [
+        -992,
+        304
+      ],
+      "id": "1df26fe7-2254-4f8c-96e9-168e59547564",
+      "name": "Fetch Playbook",
+      "credentials": {
+        "supabaseApi": {
+          "id": "FTSugGkqwnuu6irz",
+          "name": "SupaStack"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "operation": "get",
+        "tableId": "company_profiles",
+        "filters": {
+          "conditions": [
+            {
+              "keyName": "organization_id",
+              "keyValue": "={{ $('Fetch Assessment').item.json.organization_id }}"
+            }
+          ]
+        }
+      },
+      "type": "n8n-nodes-base.supabase",
+      "typeVersion": 1,
+      "position": [
+        -1008,
+        560
+      ],
+      "id": "732fe175-00df-4a61-8aa3-c87e3372c353",
+      "name": "Fetch Company Profile",
+      "credentials": {
+        "supabaseApi": {
+          "id": "FTSugGkqwnuu6irz",
+          "name": "SupaStack"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "jsCode": "// UNIFIED CONTEXT PREPARATION\n// Works for ANY stage - analyzes current state and identifies gaps\n\nconst assessment = $('Fetch Assessment').first().json;\nconst version = $('Get Latest Version').first().json;\nconst dimensionAnalyses = $('Fetch Dimension Analyses').all().map(item => item.json);\nconst playbook = $('Fetch Playbook').first().json;\nconst companyProfile = $('Fetch Company Profile').first().json;\n\n// Analyze each dimension for confidence gaps\nconst dimensionGapAnalysis = dimensionAnalyses.map(dim => {\n  const confidenceScore = dim.confidence_score || 0;\n  const confidenceGap = confidenceScore < 70 ? (70 - confidenceScore) : 0;\n  \n  return {\n    dimension_key: dim.dimension_key,\n    dimension_name: dim.dimension_name,\n    \n    // Current state\n    current_score: dim.raw_score,\n    current_confidence: confidenceScore,\n    confidence_category: dim.confidence_category,\n    maturity_level: dim.maturity_level,\n    \n    // Gap analysis\n    needs_more_evidence: confidenceScore < 70,\n    confidence_gap: confidenceGap,\n    \n    // What we know\n    existing_evidence: dim.evidence_sources || [],\n    existing_findings: {\n      summary: dim.analysis_summary,\n      strengths: dim.strengths || [],\n      gaps: dim.gaps || [],\n      quick_wins: dim.quick_wins || []\n    },\n    \n    // What's missing\n    limitations: dim.limitations || [],\n    confidence_factors: dim.confidence_factors || {},\n    improvement_suggestions: dim.confidence_improvement_suggestions || []\n  };\n});\n\n// Identify which dimensions need more evidence\nconst dimensionsNeedingEvidence = dimensionGapAnalysis.filter(d => d.needs_more_evidence);\n\nreturn [{\n  json: {\n    generation_mode: 'gap_analysis',\n    assessment_id: assessment.id,\n    organization_id: assessment.organization_id,\n    version_id: version.id,\n    current_stage: version.stage,\n    current_iteration: version.iteration || 1,\n    playbook_type: assessment.assessment_type,\n    \n    // Company info\n    company: {\n      name: assessment.company_name,\n      domain: assessment.company_domain,\n      industry: companyProfile?.industry_primary || assessment.industry_primary,\n      vertical: companyProfile?.industry_vertical || assessment.industry_vertical,\n      size: companyProfile?.employee_count_range,\n      business_model: companyProfile?.business_model || assessment.business_model,\n      target_customer: companyProfile?.target_customer\n    },\n    \n    // Playbook reference\n    playbook: {\n      id: playbook.id,\n      name: playbook.variant_name || playbook.name,\n      slug: playbook.variant_slug || playbook.slug,\n      dimensions: playbook.content?.dimensions || playbook.dimensions || [],\n      scoring_model: playbook.content?.scoring_model || playbook.scoring_model || {}\n    },\n    \n    // Current assessment state\n    current_assessment: {\n      version_id: version.id,\n      stage: version.stage,\n      iteration: version.iteration || 1,\n      status: version.status\n    },\n    \n    // Gap analysis results\n    gap_analysis: {\n      total_dimensions: dimensionGapAnalysis.length,\n      dimensions_needing_evidence: dimensionsNeedingEvidence.length,\n      target_confidence: 70,\n      \n      // Full analysis per dimension\n      dimension_analyses: dimensionGapAnalysis,\n      \n      // Summary of what needs work\n      priority_dimensions: dimensionsNeedingEvidence\n        .sort((a, b) => b.confidence_gap - a.confidence_gap)\n        .map(d => ({\n          dimension_key: d.dimension_key,\n          dimension_name: d.dimension_name,\n          current_confidence: d.current_confidence,\n          confidence_gap: d.confidence_gap,\n          improvement_suggestions: d.improvement_suggestions\n        }))\n    }\n  }\n}];"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        -544,
+        384
+      ],
+      "id": "fc373394-0a04-43e1-9566-16575de0c77e",
+      "name": "Prepare Context"
+    },
+    {
+      "parameters": {
+        "promptType": "define",
+        "text": "=You are the Requirements Generator Agent for SupaStack's assessment improvement process.\n\n## YOUR MISSION\nAnalyze the current assessment state and generate TARGETED discovery questions and document requests to close confidence gaps and improve score accuracy.\n\n## COMPANY CONTEXT\n\n**Company**: {{ $json.company.name }}\n**Industry**: {{ $json.company.industry }}\n**Vertical**: {{ $json.company.vertical }}\n**Business Model**: {{ $json.company.business_model }}\n**Assessment Type**: {{ $json.playbook_type }}\n\n## CURRENT ASSESSMENT STATE\n\n**Stage**: {{ $json.current_assessment.stage }}\n**Iteration**: {{ $json.current_assessment.iteration }}\n**Status**: {{ $json.current_assessment.status }}\n\n## GAP ANALYSIS SUMMARY\n\n**Total Dimensions**: {{ $json.gap_analysis.total_dimensions }}\n**Dimensions Needing Evidence**: {{ $json.gap_analysis.dimensions_needing_evidence }}\n**Target Confidence**: {{ $json.gap_analysis.target_confidence }}%\n\n## PRIORITY DIMENSIONS (sorted by confidence gap)\n\n{{ JSON.stringify($json.gap_analysis.priority_dimensions, null, 2) }}\n\n## FULL DIMENSION ANALYSIS\n\n{{ JSON.stringify($json.gap_analysis.dimension_analyses, null, 2) }}\n\nFor each dimension:\n- `current_score`: Raw score (0-100)\n- `current_confidence`: Confidence level (0-100)\n- `confidence_gap`: Points needed to reach 70%\n- `needs_more_evidence`: true if confidence < 70%\n- `limitations`: Specific evidence gaps\n- `existing_findings`: What we already know\n- `improvement_suggestions`: Ways to improve confidence\n\n## YOUR OUTPUT FORMAT\n\nGenerate a JSON object:\n\n{\n  \"dimensions\": [\n    {\n      \"dimension_key\": \"strategy_planning\",\n      \"dimension_name\": \"Partnership Strategy & Planning\",\n      \"current_confidence\": 52,\n      \"confidence_gap\": 18,\n      \"gap_analysis_summary\": \"Brief summary of what's missing\",\n      \"discovery_questions\": [\n        {\n          \"question_text\": \"The actual question?\",\n          \"question_context\": \"Why this helps + what limitation it addresses\",\n          \"answer_format\": \"text|number|percentage|yes_no|select_one|select_many|scale_1_5\",\n          \"answer_options\": [\"Option 1\", \"Option 2\"] or null,\n          \"confidence_impact\": \"high|medium|low\",\n          \"potential_score_impact\": \"Could move confidence by X points\",\n          \"playbook_question_ids\": [\"q1\", \"q2\"],\n          \"evidence_type\": \"quantitative|qualitative|documentation\",\n          \"is_required\": true|false,\n          \"existing_assessment_context\": \"References current limitation/suggestion\"\n        }\n      ],\n      \"document_requests\": [\n        {\n          \"document_type\": \"Type of document\",\n          \"document_description\": \"What should be in it\",\n          \"why_needed\": \"Which limitation this addresses\",\n          \"example_filenames\": [\"example1.pdf\"],\n          \"accepted_formats\": [\"pdf\", \"docx\"],\n          \"confidence_impact\": \"high|medium|low\",\n          \"potential_score_impact\": \"Could move confidence by X points\",\n          \"playbook_question_ids\": [\"q1\"],\n          \"is_required\": true|false,\n          \"existing_assessment_context\": \"References current limitation\"\n        }\n      ]\n    }\n  ],\n  \"generation_summary\": {\n    \"total_questions\": 15,\n    \"total_document_requests\": 8,\n    \"dimensions_targeted\": 4,\n    \"estimated_confidence_improvement\": \"Summary statement\",\n    \"priority_order\": [\"dim1\", \"dim2\"]\n  }\n}\n\n## GENERATION RULES\n\n### Volume by Gap Size:\n- **confidence_gap > 40**: Generate 5-6 questions, 3-4 documents\n- **confidence_gap 20-40**: Generate 3-4 questions, 2-3 documents\n- **confidence_gap < 20**: Generate 2-3 questions, 1-2 documents\n- **needs_more_evidence = false**: Skip or 1 optional validation question\n\n### Target Limitations Directly:\nEach item in `limitations` array should map to at least one question or document. Reference the specific limitation in `existing_assessment_context`.\n\n### Answer Formats:\n- \"number\" - metrics, counts\n- \"percentage\" - ratios (0-100)\n- \"text\" - descriptions\n- \"yes_no\" - binary\n- \"select_one\" - single choice (MUST provide answer_options)\n- \"select_many\" - multiple choice (MUST provide answer_options)\n- \"scale_1_5\" - maturity/agreement ratings\n\n### Confidence Impact:\n- **high**: Directly addresses critical limitation or large gap\n- **medium**: Addresses medium priority gap or supporting evidence\n- **low**: Nice-to-have validation\n\n## FINAL INSTRUCTIONS\n\n1. ONLY process dimensions where `needs_more_evidence = true`\n2. Reference SPECIFIC limitations and improvement_suggestions\n3. Include `existing_assessment_context` in EVERY item\n4. Prioritize dimensions with largest confidence_gap\n5. Output ONLY valid JSON - no markdown, no explanations outside JSON",
+        "options": {}
+      },
+      "type": "@n8n/n8n-nodes-langchain.agent",
+      "typeVersion": 2.2,
+      "position": [
+        -304,
+        352
+      ],
+      "id": "d1851a37-8694-4db0-9997-18a57d6b82f0",
+      "name": "Requirements Generator Agent"
+    },
+    {
+      "parameters": {
+        "model": "anthropic/claude-sonnet-4",
+        "options": {}
+      },
+      "type": "@n8n/n8n-nodes-langchain.lmChatOpenRouter",
+      "typeVersion": 1,
+      "position": [
+        -336,
+        720
+      ],
+      "id": "2c789da3-cbe8-4176-b90c-73a4976faeb2",
+      "name": "OpenRouter",
+      "credentials": {
+        "openRouterApi": {
+          "id": "DPnbXJEN5OpXBJeM",
+          "name": "OpenRouter account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "jsCode": "// Parse agent output and prepare for database insertion\nconst input = $input.first().json;\nconst context = $('Prepare Context').first().json;\n\nlet requirements;\n\n// Helper function to extract JSON from markdown code blocks\nfunction extractJSON(str) {\n  if (typeof str !== 'string') return null;\n  \n  // Try to parse directly first\n  try {\n    return JSON.parse(str);\n  } catch (e) {\n    // Try to extract from markdown code blocks\n    const jsonMatch = str.match(/```(?:json)?\\s*([\\s\\S]*?)\\s*```/);\n    if (jsonMatch) {\n      return JSON.parse(jsonMatch[1].trim());\n    }\n    return null;\n  }\n}\n\n// Handle different input structures\nif (input.output) {\n  requirements = extractJSON(input.output);\n  if (!requirements) {\n    throw new Error('Could not parse agent output from input.output');\n  }\n} else if (typeof input === 'string') {\n  requirements = extractJSON(input);\n  if (!requirements) {\n    throw new Error('Could not parse agent output from string input');\n  }\n} else if (input.dimensions) {\n  requirements = input;\n} else if (input.text) {\n  requirements = extractJSON(input.text);\n  if (!requirements) {\n    throw new Error('Could not parse agent output from input.text');\n  }\n} else {\n  throw new Error('Unknown input format: ' + JSON.stringify(Object.keys(input)));\n}\n\nconst assessmentId = context.assessment_id;\nconst versionId = context.version_id;\nconst stage = context.current_stage;\nconst iteration = context.current_iteration;\nconst generationMode = context.generation_mode;\nconst timestamp = new Date().toISOString();\n\nconst questions = [];\nconst documentRequests = [];\n\nlet questionOrder = 0;\nlet docOrder = 0;\n\nfor (const dimension of requirements.dimensions || []) {\n  for (const q of dimension.discovery_questions || []) {\n    questionOrder++;\n    questions.push({\n      assessment_id: assessmentId,\n      version_id: versionId,\n      stage: stage,\n      iteration: iteration,\n      dimension_key: dimension.dimension_key,\n      dimension_name: dimension.dimension_name,\n      question_text: q.question_text,\n      question_context: q.question_context,\n      answer_format: q.answer_format || 'text',\n      answer_options: q.answer_options || null,\n      confidence_impact: q.confidence_impact || 'medium',\n      potential_score_impact: q.potential_score_impact || null,\n      playbook_question_ids: q.playbook_question_ids || [],\n      evidence_type: q.evidence_type || 'qualitative',\n      display_order: questionOrder,\n      is_required: q.is_required || false,\n      existing_assessment_context: q.existing_assessment_context || null,\n      generated_by_model: 'anthropic/claude-sonnet-4',\n      generated_at: timestamp\n    });\n  }\n  \n  for (const d of dimension.document_requests || []) {\n    docOrder++;\n    documentRequests.push({\n      assessment_id: assessmentId,\n      version_id: versionId,\n      stage: stage,\n      iteration: iteration,\n      dimension_key: dimension.dimension_key,\n      dimension_name: dimension.dimension_name,\n      document_type: d.document_type,\n      document_description: d.document_description,\n      why_needed: d.why_needed,\n      example_filenames: d.example_filenames || [],\n      accepted_formats: d.accepted_formats || ['pdf', 'docx', 'xlsx'],\n      confidence_impact: d.confidence_impact || 'medium',\n      potential_score_impact: d.potential_score_impact || null,\n      playbook_question_ids: d.playbook_question_ids || [],\n      display_order: docOrder,\n      is_required: d.is_required || false,\n      existing_assessment_context: d.existing_assessment_context || null,\n      generated_by_model: 'anthropic/claude-sonnet-4',\n      generated_at: timestamp\n    });\n  }\n}\n\nreturn [{\n  json: {\n    assessment_id: assessmentId,\n    version_id: versionId,\n    stage: stage,\n    iteration: iteration,\n    generation_mode: generationMode,\n    questions: questions,\n    document_requests: documentRequests,\n    summary: requirements.generation_summary || {\n      total_questions: questions.length,\n      total_document_requests: documentRequests.length,\n      mode: generationMode\n    }\n  }\n}]"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        368,
+        288
+      ],
+      "id": "f0432da9-a374-4ef7-9d73-30fe1733194a",
+      "name": "Parse Requirements"
+    },
+    {
+      "parameters": {
+        "jsCode": "// Split into individual question items for batch insert\nconst data = $input.first().json;\nreturn data.questions.map(q => ({ json: q }));"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        752,
+        192
+      ],
+      "id": "6c7cfa00-5ace-42df-a997-c6be57cc31a0",
+      "name": "Split Questions"
+    },
+    {
+      "parameters": {
+        "tableId": "discovery_questions",
+        "fieldsUi": {
+          "fieldValues": [
+            {
+              "fieldId": "assessment_id",
+              "fieldValue": "={{ $json.assessment_id }}"
+            },
+            {
+              "fieldId": "version_id",
+              "fieldValue": "={{ $json.version_id }}"
+            },
+            {
+              "fieldId": "dimension_key",
+              "fieldValue": "={{ $json.dimension_key }}"
+            },
+            {
+              "fieldId": "dimension_name",
+              "fieldValue": "={{ $json.dimension_name }}"
+            },
+            {
+              "fieldId": "question_text",
+              "fieldValue": "={{ $json.question_text }}"
+            },
+            {
+              "fieldId": "question_context",
+              "fieldValue": "={{ $json.question_context }}"
+            },
+            {
+              "fieldId": "answer_format",
+              "fieldValue": "={{ $json.answer_format }}"
+            },
+            {
+              "fieldId": "answer_options",
+              "fieldValue": "={{ $json.answer_options }}"
+            },
+            {
+              "fieldId": "confidence_impact",
+              "fieldValue": "={{ $json.confidence_impact }}"
+            },
+            {
+              "fieldId": "playbook_question_ids",
+              "fieldValue": "={{ $json.playbook_question_ids }}"
+            },
+            {
+              "fieldId": "evidence_type",
+              "fieldValue": "={{ $json.evidence_type }}"
+            },
+            {
+              "fieldId": "display_order",
+              "fieldValue": "={{ $json.display_order }}"
+            },
+            {
+              "fieldId": "is_required",
+              "fieldValue": "={{ $json.is_required }}"
+            },
+            {
+              "fieldId": "webscan_hint",
+              "fieldValue": "={{ $json.webscan_hint }}"
+            },
+            {
+              "fieldId": "generated_by_model",
+              "fieldValue": "={{ $json.generated_by_model }}"
+            }
+          ]
+        }
+      },
+      "type": "n8n-nodes-base.supabase",
+      "typeVersion": 1,
+      "position": [
+        976,
+        192
+      ],
+      "id": "8fc78e50-8e56-4c52-99b0-9651f45bc8f1",
+      "name": "Insert Questions",
+      "credentials": {
+        "supabaseApi": {
+          "id": "FTSugGkqwnuu6irz",
+          "name": "SupaStack"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "jsCode": "// Split into individual document request items for batch insert\nconst data = $('Parse Requirements').first().json;\nreturn data.document_requests.map(d => ({ json: d }));"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        752,
+        384
+      ],
+      "id": "e7271970-26b1-4105-ba91-d2f0cde0be5e",
+      "name": "Split Doc Requests"
+    },
+    {
+      "parameters": {
+        "tableId": "document_requests",
+        "fieldsUi": {
+          "fieldValues": [
+            {
+              "fieldId": "assessment_id",
+              "fieldValue": "={{ $json.assessment_id }}"
+            },
+            {
+              "fieldId": "version_id",
+              "fieldValue": "={{ $json.version_id }}"
+            },
+            {
+              "fieldId": "dimension_key",
+              "fieldValue": "={{ $json.dimension_key }}"
+            },
+            {
+              "fieldId": "dimension_name",
+              "fieldValue": "={{ $json.dimension_name }}"
+            },
+            {
+              "fieldId": "document_type",
+              "fieldValue": "={{ $json.document_type }}"
+            },
+            {
+              "fieldId": "document_description",
+              "fieldValue": "={{ $json.document_description }}"
+            },
+            {
+              "fieldId": "why_needed",
+              "fieldValue": "={{ $json.why_needed }}"
+            },
+            {
+              "fieldId": "example_filenames",
+              "fieldValue": "={{ $json.example_filenames }}"
+            },
+            {
+              "fieldId": "accepted_formats",
+              "fieldValue": "={{ $json.accepted_formats }}"
+            },
+            {
+              "fieldId": "confidence_impact",
+              "fieldValue": "={{ $json.confidence_impact }}"
+            },
+            {
+              "fieldId": "playbook_question_ids",
+              "fieldValue": "={{ $json.playbook_question_ids }}"
+            },
+            {
+              "fieldId": "display_order",
+              "fieldValue": "={{ $json.display_order }}"
+            },
+            {
+              "fieldId": "is_required",
+              "fieldValue": "={{ $json.is_required }}"
+            },
+            {
+              "fieldId": "webscan_hint",
+              "fieldValue": "={{ $json.webscan_hint }}"
+            },
+            {
+              "fieldId": "generated_by_model",
+              "fieldValue": "={{ $json.generated_by_model }}"
+            }
+          ]
+        }
+      },
+      "type": "n8n-nodes-base.supabase",
+      "typeVersion": 1,
+      "position": [
+        976,
+        384
+      ],
+      "id": "2770ef0b-4a16-4661-a01a-1d6b45194fa1",
+      "name": "Insert Doc Requests",
+      "credentials": {
+        "supabaseApi": {
+          "id": "FTSugGkqwnuu6irz",
+          "name": "SupaStack"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "respondWith": "json",
+        "responseBody": "={{ { success: true, assessment_id: $('Parse Requirements').first().json.assessment_id, generation_mode: $('Parse Requirements').first().json.generation_mode, questions: $('Parse Requirements').first().json.questions.length, documents: $('Parse Requirements').first().json.document_requests.length } }}",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1.1,
+      "position": [
+        1184,
+        288
+      ],
+      "id": "c834fce7-bee5-4954-a314-e142628f3edb",
+      "name": "Respond"
+    },
+    {
+      "parameters": {
+        "jsCode": "// Get Latest Version - Stage-Aware Sorting\n// Returns the version at the furthest stage in the assessment journey\n\nconst versions = $input.all().map(item => item.json);\n\nif (versions.length === 0) {\n  throw new Error('No versions found for this assessment');\n}\n\n// Define stage progression order (higher = further along)\nconst stageOrder = {\n  'web_scan': 1,\n  'strategic': 2,\n  'strategic_validated': 3,\n  'execution': 4,\n  'requirements': 5\n};\n\n// Sort by stage progression (highest first), then by updated_at\nversions.sort((a, b) => {\n  const stageA = stageOrder[a.stage] || 0;\n  const stageB = stageOrder[b.stage] || 0;\n  \n  // Different stages? Return highest stage\n  if (stageA !== stageB) {\n    return stageB - stageA;\n  }\n  \n  // Same stage? Return most recently updated\n  return new Date(b.updated_at) - new Date(a.updated_at);\n});\n\n// Return the latest version (furthest stage, most recent update)\nreturn [{ json: versions[0] }];"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        -1216,
+        240
+      ],
+      "id": "28199f35-695b-40dc-9486-d9a806521ebb",
+      "name": "Get Latest Version"
+    },
+    {
+      "parameters": {
+        "numberInputs": 3
+      },
+      "type": "n8n-nodes-base.merge",
+      "typeVersion": 3.2,
+      "position": [
+        -768,
+        352
+      ],
+      "id": "f8177176-c431-4a9a-a704-9e73ad06f552",
+      "name": "Merge"
+    }
+  ],
+  "connections": {
+    "Webhook": {
+      "main": [
+        [
+          {
+            "node": "Fetch Assessment",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Fetch Assessment": {
+      "main": [
+        [
+          {
+            "node": "Fetch Latest Version",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Fetch Latest Version": {
+      "main": [
+        [
+          {
+            "node": "Get Latest Version",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Prepare Context": {
+      "main": [
+        [
+          {
+            "node": "Requirements Generator Agent",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "OpenRouter": {
+      "ai_languageModel": [
+        [
+          {
+            "node": "Requirements Generator Agent",
+            "type": "ai_languageModel",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Requirements Generator Agent": {
+      "main": [
+        [
+          {
+            "node": "Parse Requirements",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Parse Requirements": {
+      "main": [
+        [
+          {
+            "node": "Split Questions",
+            "type": "main",
+            "index": 0
+          },
+          {
+            "node": "Split Doc Requests",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Split Questions": {
+      "main": [
+        [
+          {
+            "node": "Insert Questions",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Split Doc Requests": {
+      "main": [
+        [
+          {
+            "node": "Insert Doc Requests",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Insert Questions": {
+      "main": [
+        [
+          {
+            "node": "Respond",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Insert Doc Requests": {
+      "main": [
+        [
+          {
+            "node": "Respond",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Get Latest Version": {
+      "main": [
+        [
+          {
+            "node": "Fetch Dimension Analyses",
+            "type": "main",
+            "index": 0
+          },
+          {
+            "node": "Fetch Playbook",
+            "type": "main",
+            "index": 0
+          },
+          {
+            "node": "Fetch Company Profile",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Fetch Dimension Analyses": {
+      "main": [
+        [
+          {
+            "node": "Merge",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Fetch Playbook": {
+      "main": [
+        [
+          {
+            "node": "Merge",
+            "type": "main",
+            "index": 1
+          }
+        ]
+      ]
+    },
+    "Fetch Company Profile": {
+      "main": [
+        [
+          {
+            "node": "Merge",
+            "type": "main",
+            "index": 2
+          }
+        ]
+      ]
+    },
+    "Merge": {
+      "main": [
+        [
+          {
+            "node": "Prepare Context",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "settings": {
+    "executionOrder": "v1",
+    "callerPolicy": "workflowsFromSameOwner",
+    "availableInMCP": false
+  },
+  "staticData": null,
+  "meta": {
+    "templateCredsSetupCompleted": true
+  },
+  "pinData": {
+    "Webhook": [
+      {
+        "json": {
+          "body": {
+            "assessment_id": "a0dc498d-9411-49f0-9359-c5989f4acabc"
+          }
+        }
+      }
+    ],
+    "Requirements Generator Agent": [
+      {
+        "json": {
+          "output": "```json\n{\n  \"dimensions\": [\n    {\n      \"dimension_key\": \"financial\",\n      \"dimension_name\": \"Financial Operations & Business Model\",\n      \"current_confidence\": 52,\n      \"confidence_gap\": 18,\n      \"gap_analysis_summary\": \"Missing internal unit economics tracking (LTV/CAC), formal profitability analysis by client/category, and advanced financial planning capabilities like rolling forecasts and predictive modeling\",\n      \"discovery_questions\": [\n        {\n          \"question_text\": \"What is your average Customer Lifetime Value (LTV) to Customer Acquisition Cost (CAC) ratio?\",\n          \"question_context\": \"Addresses the gap in unit economics tracking which is critical for business model optimization\",\n          \"answer_format\": \"number\",\n          \"answer_options\": null,\n          \"confidence_impact\": \"high\",\n          \"potential_score_impact\": \"Could move confidence by 8-10 points\",\n          \"playbook_question_ids\": [\"fin_1\"],\n          \"evidence_type\": \"quantitative\",\n          \"is_required\": true,\n          \"existing_assessment_context\": \"Current findings show insufficient evidence of internal unit economics tracking (LTV/CAC)\"\n        },\n        {\n          \"question_text\": \"Do you track profitability metrics by client segment or product category?\",\n          \"question_context\": \"Identifies whether formal profitability analysis exists to support strategic decision making\",\n          \"answer_format\": \"select_one\",\n          \"answer_options\": [\"Yes, by both client and category\", \"Yes, by client only\", \"Yes, by category only\", \"No formal tracking\"],\n          \"confidence_impact\": \"high\",\n          \"potential_score_impact\": \"Could move confidence by 6-8 points\",\n          \"playbook_question_ids\": [\"fin_2\"],\n          \"evidence_type\": \"qualitative\",\n          \"is_required\": true,\n          \"existing_assessment_context\": \"Assessment lacks evidence of formal profitability analysis by client/category\"\n        },\n        {\n          \"question_text\": \"What financial planning tools do you use for forecasting revenue and cash flow?\",\n          \"question_context\": \"Assesses sophistication of financial planning beyond basic budgeting\",\n          \"answer_format\": \"select_many\",\n          \"answer_options\": [\"Rolling 12-month forecasts\", \"Predictive modeling software\", \"Scenario planning tools\", \"Basic annual budgets only\", \"Excel-based planning\", \"Dedicated FP&A platform\"],\n          \"confidence_impact\": \"medium\",\n          \"potential_score_impact\": \"Could move confidence by 4-6 points\",\n          \"playbook_question_ids\": [\"fin_3\"],\n          \"evidence_type\": \"qualitative\",\n          \"is_required\": true,\n          \"existing_assessment_context\": \"No evidence found of advanced financial planning capabilities like rolling forecasts or predictive modeling\"\n        },\n        {\n          \"question_text\": \"What percentage of your revenue comes from recurring vs. project-based engagements?\",\n          \"question_context\": \"Clarifies revenue model predictability which impacts financial operations maturity\",\n          \"answer_format\": \"percentage\",\n          \"answer_options\": null,\n          \"confidence_impact\": \"medium\",\n          \"potential_score_impact\": \"Could move confidence by 3-5 points\",\n          \"playbook_question_ids\": [\"fin_4\"],\n          \"evidence_type\": \"quantitative\",\n          \"is_required\": false,\n          \"existing_assessment_context\": \"Fixed-fee model mentioned but revenue mix breakdown unclear for financial planning assessment\"\n        }\n      ],\n      \"document_requests\": [\n        {\n          \"document_type\": \"Financial Dashboard or KPI Report\",\n          \"document_description\": \"Monthly or quarterly report showing key financial metrics including LTV, CAC, profitability by segment\",\n          \"why_needed\": \"Provides evidence of unit economics tracking and profitability analysis capabilities\",\n          \"example_filenames\": [\"monthly_financial_kpis.pdf\", \"unit_economics_dashboard.xlsx\"],\n          \"accepted_formats\": [\"pdf\", \"xlsx\", \"docx\"],\n          \"confidence_impact\": \"high\",\n          \"potential_score_impact\": \"Could move confidence by 8-12 points\",\n          \"playbook_question_ids\": [\"fin_1\", \"fin_2\"],\n          \"is_required\": true,\n          \"existing_assessment_context\": \"No evidence of internal unit economics tracking or formal profitability analysis found\"\n        },\n        {\n          \"document_type\": \"Financial Forecasting Model or Plan\",\n          \"document_description\": \"Rolling forecast model, budget vs. actuals analysis, or financial planning documentation\",\n          \"why_needed\": \"Demonstrates advanced financial planning capabilities beyond basic budgeting\",\n          \"example_filenames\": [\"2024_rolling_forecast.xlsx\", \"financial_planning_model.pdf\"],\n          \"accepted_formats\": [\"pdf\", \"xlsx\", \"docx\"],\n          \"confidence_impact\": \"medium\",\n          \"potential_score_impact\": \"Could move confidence by 5-8 points\",\n          \"playbook_question_ids\": [\"fin_3\"],\n          \"is_required\": true,\n          \"existing_assessment_context\": \"Assessment shows no evidence of advanced financial planning capabilities like rolling forecasts\"\n        }\n      ]\n    },\n    {\n      \"dimension_key\": \"commercial\",\n      \"dimension_name\": \"Commercial Strategy & Market Approach\",\n      \"current_confidence\": 58,\n      \"confidence_gap\": 12,\n      \"gap_analysis_summary\": \"Missing formalized market sizing, competitive intelligence frameworks, pricing optimization processes, and quantified GTM performance metrics like CAC, NRR, and win rates\",\n      \"discovery_questions\": [\n        {\n          \"question_text\": \"What is your current win rate for new client proposals or RFPs?\",\n          \"question_context\": \"Addresses gap in quantified GTM performance metrics essential for commercial strategy optimization\",\n          \"answer_format\": \"percentage\",\n          \"answer_options\": null,\n          \"confidence_impact\": \"high\",\n          \"potential_score_impact\": \"Could move confidence by 6-8 points\",\n          \"playbook_question_ids\": [\"com_1\"],\n          \"evidence_type\": \"quantitative\",\n          \"is_required\": true,\n          \"existing_assessment_context\": \"Critical gaps exist in quantified performance metrics including win rates\"\n        },\n        {\n          \"question_text\": \"Do you have a formal competitive intelligence process or framework?\",\n          \"question_context\": \"Identifies whether structured competitive analysis exists to inform commercial strategy\",\n          \"answer_format\": \"select_one\",\n          \"answer_options\": [\"Yes, systematic competitor tracking\", \"Yes, ad-hoc competitive analysis\", \"No formal process\"],\n          \"confidence_impact\": \"medium\",\n          \"potential_score_impact\": \"Could move confidence by 4-6 points\",\n          \"playbook_question_ids\": [\"com_2\"],\n          \"evidence_type\": \"qualitative\",\n          \"is_required\": true,\n          \"existing_assessment_context\": \"Assessment shows gaps in competitive intelligence frameworks\"\n        },\n        {\n          \"question_text\": \"How do you determine and optimize your pricing strategy?\",\n          \"question_context\": \"Assesses sophistication of pricing optimization processes beyond basic cost-plus models\",\n          \"answer_format\": \"select_many\",\n          \"answer_options\": [\"Value-based pricing analysis\", \"Competitive pricing benchmarking\", \"Cost-plus methodology\", \"Dynamic pricing based on market conditions\", \"Client-specific pricing models\"],\n          \"confidence_impact\": \"medium\",\n          \"potential_score_impact\": \"Could move confidence by 4-6 points\",\n          \"playbook_question_ids\": [\"com_3\"],\n          \"evidence_type\": \"qualitative\",\n          \"is_required\": true,\n          \"existing_assessment_context\": \"No evidence found of pricing optimization processes\"\n        }\n      ],\n      \"document_requests\": [\n        {\n          \"document_type\": \"Sales Performance Report\",\n          \"document_description\": \"Report showing win rates, pipeline metrics, CAC, and other GTM performance indicators\",\n          \"why_needed\": \"Provides quantified evidence of commercial performance metrics currently missing\",\n          \"example_filenames\": [\"sales_performance_q3.pdf\", \"gtm_metrics_dashboard.xlsx\"],\n          \"accepted_formats\": [\"pdf\", \"xlsx\", \"docx\"],\n          \"confidence_impact\": \"high\",\n          \"potential_score_impact\": \"Could move confidence by 6-10 points\",\n          \"playbook_question_ids\": [\"com_1\"],\n          \"is_required\": true,\n          \"existing_assessment_context\": \"Assessment lacks quantified performance metrics like win rates and CAC\"\n        },\n        {\n          \"document_type\": \"Competitive Analysis or Market Research\",\n          \"document_description\": \"Formal competitive intelligence report, market sizing analysis, or positioning study\",\n          \"why_needed\": \"Demonstrates formalized market analysis and competitive intelligence capabilities\",\n          \"example_filenames\": [\"competitive_landscape_2024.pdf\", \"market_analysis.docx\"],\n          \"accepted_formats\": [\"pdf\", \"docx\", \"pptx\"],\n          \"confidence_impact\": \"medium\",\n          \"potential_score_impact\": \"Could move confidence by 4-6 points\",\n          \"playbook_question_ids\": [\"com_2\"],\n          \"is_required\": false,\n          \"existing_assessment_context\": \"Gaps exist in formalized market sizing and competitive intelligence frameworks\"\n        }\n      ]\n    },\n    {\n      \"dimension_key\": \"operations\",\n      \"dimension_name\": \"Operations & Process Excellence\",\n      \"current_confidence\": 58,\n      \"confidence_gap\": 12,\n      \"gap_analysis_summary\": \"Missing systematic GTM operations optimization including RFQ response times, pipeline forecasting accuracy, lead routing automation, and customer journey mapping\",\n      \"discovery_questions\": [\n        {\n          \"question_text\": \"What is your average response time for client RFQs or inquiries?\",\n          \"question_context\": \"Measures operational efficiency in client-facing processes critical for GTM operations\",\n          \"answer_format\": \"select_one\",\n          \"answer_options\": [\"Under 2 hours\", \"2-8 hours\", \"1-2 business days\", \"3-5 business days\", \"Over 1 week\"],\n          \"confidence_impact\": \"medium\",\n          \"potential_score_impact\": \"Could move confidence by 4-6 points\",\n          \"playbook_question_ids\": [\"ops_1\"],\n          \"evidence_type\": \"quantitative\",\n          \"is_required\": true,\n          \"existing_assessment_context\": \"Critical GTM metrics like RFQ response times are not publicly visible\"\n        },\n        {\n          \"question_text\": \"Do you use automated lead routing and qualification processes?\",\n          \"question_context\": \"Assesses level of sales operations automation and process optimization\",\n          \"answer_format\": \"select_one\",\n          \"answer_options\": [\"Fully automated with scoring\", \"Partially automated\", \"Manual routing only\"],\n          \"confidence_impact\": \"medium\",\n          \"potential_score_impact\": \"Could move confidence by 3-5 points\",\n          \"playbook_question_ids\": [\"ops_2\"],\n          \"evidence_type\": \"qualitative\",\n          \"is_required\": true,\n          \"existing_assessment_context\": \"No evidence of lead routing automation in modern sales operations infrastructure\"\n        },\n        {\n          \"question_text\": \"How accurate is your pipeline forecasting on a monthly basis?\",\n          \"question_context\": \"Indicates sophistication of sales operations and predictive capabilities\",\n          \"answer_format\": \"select_one\",\n          \"answer_options\": [\"Within 5% accuracy\", \"Within 10% accuracy\", \"Within 20% accuracy\", \"Over 20% variance\", \"No formal forecasting\"],\n          \"confidence_impact\": \"medium\",\n          \"potential_score_impact\": \"Could move confidence by 4-6 points\",\n          \"playbook_question_ids\": [\"ops_3\"],\n          \"evidence_type\": \"quantitative\",\n          \"is_required\": false,\n          \"existing_assessment_context\": \"Pipeline forecasting accuracy not visible, indicating gaps in sales operations infrastructure\"\n        }\n      ],\n      \"document_requests\": [\n        {\n          \"document_type\": \"Sales Operations Process Documentation\",\n          \"document_description\": \"Documentation of lead routing, RFQ processes, pipeline management, and customer journey workflows\",\n          \"why_needed\": \"Provides evidence of systematic GTM operations processes currently missing from assessment\",\n          \"example_filenames\": [\"sales_ops_playbook.pdf\", \"lead_management_process.docx\"],\n          \"accepted_formats\": [\"pdf\", \"docx\"],\n          \"confidence_impact\": \"medium\",\n          \"potential_score_impact\": \"Could move confidence by 5-8 points\",\n          \"playbook_question_ids\": [\"ops_1\", \"ops_2\"],\n          \"is_required\": true,\n          \"existing_assessment_context\": \"Assessment shows gaps in modern sales operations infrastructure and process documentation\"\n        }\n      ]\n    },\n    {\n      \"dimension_key\": \"data_analytics\",\n      \"dimension_name\": \"Data Infrastructure & Analytics\",\n      \"current_confidence\": 58,\n      \"confidence_gap\": 12,\n      \"gap_analysis_summary\": \"Missing CRM integration, data quality standards, attribution modeling for client acquisition, and data governance frameworks essential for sourcing services at scale\",\n      \"discovery_questions\": [\n        {\n          \"question_text\": \"Do you have integrated CRM and ERP systems for unified client data management?\",\n          \"question_context\": \"Addresses critical gap in CRM integration for comprehensive data infrastructure\",\n          \"answer_format\": \"select_one\",\n          \"answer_options\": [\"Fully integrated systems\", \"Partially integrated\", \"Separate systems with manual sync\", \"No CRM integration\"],\n          \"confidence_impact\": \"high\",\n          \"potential_score_impact\": \"Could move confidence by 6-8 points\",\n          \"playbook_question_ids\": [\"data_1\"],\n          \"evidence_type\": \"qualitative\",\n          \"is_required\": true,\n          \"existing_assessment_context\": \"No visible CRM integration identified as critical gap in data infrastructure\"\n        },\n        {\n          \"question_text\": \"What data quality standards and validation processes do you have in place?\",\n          \"question_context\": \"Assesses fundamental data governance capabilities for reliable analytics\",\n          \"answer_format\": \"select_many\",\n          \"answer_options\": [\"Automated data validation\", \"Regular data audits\", \"Data quality scorecards\", \"Standardized data entry protocols\", \"No formal standards\"],\n          \"confidence_impact\": \"medium\",\n          \"potential_score_impact\": \"Could move confidence by 4-6 points\",\n          \"playbook_question_ids\": [\"data_2\"],\n          \"evidence_type\": \"qualitative\",\n          \"is_required\": true,\n          \"existing_assessment_context\": \"Unclear data quality standards identified as gap in data governance frameworks\"\n        },\n        {\n          \"question_text\": \"Do you track attribution for client acquisition across different marketing channels?\",\n          \"question_context\": \"Identifies capability for marketing analytics and ROI measurement\",\n          \"answer_format\": \"yes_no\",\n          \"answer_options\": null,\n          \"confidence_impact\": \"medium\",\n          \"potential_score_impact\": \"Could move confidence by 3-5 points\",\n          \"playbook_question_ids\": [\"data_3\"],\n          \"evidence_type\": \"qualitative\",\n          \"is_required\": false,\n          \"existing_assessment_context\": \"No attribution modeling for client acquisition found in current assessment\"\n        }\n      ],\n      \"document_requests\": [\n        {\n          \"document_type\": \"Data Architecture Diagram or Integration Map\",\n          \"document_description\": \"Documentation showing system integrations, data flows between CRM, ERP, and other business systems\",\n          \"why_needed\": \"Provides evidence of data integration capabilities and architecture maturity\",\n          \"example_filenames\": [\"data_architecture.pdf\", \"system_integration_map.docx\"],\n          \"accepted_formats\": [\"pdf\", \"docx\", \"visio\"],\n          \"confidence_impact\": \"high\",\n          \"potential_score_impact\": \"Could move confidence by 6-10 points\",\n          \"playbook_question_ids\": [\"data_1\"],\n          \"is_required\": true,\n          \"existing_assessment_context\": \"Assessment shows no visible CRM integration and unclear data architecture\"\n        }\n      ]\n    },\n    {\n      \"dimension_key\": \"people_org\",\n      \"dimension_name\": \"People & Organizational Readiness\",\n      \"current_confidence\": 58,\n      \"confidence_gap\": 12,\n      \"gap_analysis_summary\": \"Missing people analytics, AI-augmented workflows, formalized development programs, revenue optimization per rep, and systematic training\",\n      \"discovery_questions\": [\n        {\n          \"question_text\": \"What is your average revenue per sales representative annually?\",\n          \"question_context\": \"Measures sales productivity and organizational efficiency in revenue generation\",\n          \"answer_format\": \"number\",\n          \"answer_options\": null,\n          \"confidence_impact\": \"medium\",\n          \"potential_score_impact\": \"Could move confidence by 4-6 points\",\n          \"playbook_question_ids\": [\"people_1\"],\n          \"evidence_type\": \"quantitative\",\n          \"is_required\": true,\n          \"existing_assessment_context\": \"Gaps exist in revenue optimization per rep metrics for organizational performance\"\n        },\n        {\n          \"question_text\": \"Do you have formal training and development programs for your sales and client-facing teams?\",\n          \"question_context\": \"Assesses systematic approach to capability building and organizational readiness\",\n          \"answer_format\": \"select_one\",\n          \"answer_options\": [\"Comprehensive formal programs\", \"Basic training programs\", \"On-the-job training only\", \"No formal programs\"],\n          \"confidence_impact\": \"medium\",\n          \"potential_score_impact\": \"Could move confidence by 3-5 points\",\n          \"playbook_question_ids\": [\"people_2\"],\n          \"evidence_type\": \"qualitative\",\n          \"is_required\": true,\n          \"existing_assessment_context\": \"Assessment lacks evidence of formalized development programs\"\n        }\n      ],\n      \"document_requests\": [\n        {\n          \"document_type\": \"Organizational Performance Report\",\n          \"document_description\": \"Report showing sales productivity metrics, revenue per employee, training completion rates\",\n          \"why_needed\": \"Provides quantitative evidence of people analytics and performance optimization\",\n          \"example_filenames\": [\"sales_productivity_report.pdf\", \"people_analytics_dashboard.xlsx\"],\n          \"accepted_formats\": [\"pdf\", \"xlsx\", \"docx\"],\n          \"confidence_impact\": \"medium\",\n          \"potential_score_impact\": \"Could move confidence by 5-8 points\",\n          \"playbook_question_ids\": [\"people_1\"],\n          \"is_required\": false,\n          \"existing_assessment_context\": \"Assessment lacks evidence of people analytics and revenue optimization metrics\"\n        }\n      ]\n    },\n    {\n      \"dimension_key\": \"technology\",\n      \"dimension_name\": \"Technology Stack & Integration\",\n      \"current_confidence\": 58,\n      \"confidence_gap\": 12,\n      \"gap_analysis_summary\": \"Missing modern CRM, marketing automation, and AI-powered GTM tools, with technology focused on operational execution rather than customer-facing revenue orchestration\",\n      \"discovery_questions\": [\n        {\n          \"question_text\": \"What CRM platform do you currently use for sales and client management?\",\n          \"question_context\": \"Identifies presence and sophistication of customer relationship management technology\",\n          \"answer_format\": \"select_one\",\n          \"answer_options\": [\"Salesforce or similar enterprise CRM\", \"HubSpot or mid-market CRM\", \"Basic CRM solution\", \"Excel or manual tracking\", \"No formal CRM\"],\n          \"confidence_impact\": \"high\",\n          \"potential_score_impact\": \"Could move confidence by 6-8 points\",\n          \"playbook_question_ids\": [\"tech_1\"],\n          \"evidence_type\": \"qualitative\",\n          \"is_required\": true,\n          \"existing_assessment_context\": \"No clear evidence of modern CRM found in technology stack assessment\"\n        },\n        {\n          \"question_text\": \"Do you use marketing automation tools for lead nurturing and campaign management?\",\n          \"question_context\": \"Assesses presence of automated marketing technology for GTM effectiveness\",\n          \"answer_format\": \"yes_no\",\n          \"answer_options\": null,\n          \"confidence_impact\": \"medium\",\n          \"potential_score_impact\": \"Could move confidence by 4-6 points\",\n          \"playbook_question_ids\": [\"tech_2\"],\n          \"evidence_type\": \"qualitative\",\n          \"is_required\": true,\n          \"existing_assessment_context\": \"Assessment shows no evidence of marketing automation in GTM technology stack\"\n        }\n      ],\n      \"document_requests\": [\n        {\n          \"document_type\": \"Technology Stack Documentation\",\n          \"document_description\": \"List of current software platforms, integrations, and technology roadmap for GTM operations\",\n          \"why_needed\": \"Provides comprehensive view of customer-facing technology capabilities currently unclear\",\n          \"example_filenames\": [\"tech_stack_overview.pdf\", \"crm_integration_guide.docx\"],\n          \"accepted_formats\": [\"pdf\", \"docx\"],\n          \"confidence_impact\": \"medium\",\n          \"potential_score_impact\": \"Could move confidence by 5-8 points\",\n          \"playbook_question_ids\": [\"tech_1\", \"tech_2\"],\n          \"is_required\": true,\n          \"existing_assessment_context\": \"Technology focused on operational execution rather than customer-facing revenue orchestration\"\n        }\n      ]\n    }\n  ],\n  \"generation_summary\": {\n    \"total_questions\": 18,\n    \"total_document_requests\": 8,\n    \"dimensions_targeted\": 6,\n    \"estimated_confidence_improvement\": \"Targeted questions and documents could improve overall confidence by 20-35 points across all dimensions, with financial operations showing highest potential improvement\",\n    \"priority_order\": [\"financial\", \"commercial\", \"operations\", \"data_analytics\", \"people_org\", \"technology\"]\n  }\n}\n```"
+        },
+        "pairedItem": {
+          "item": 0
+        }
+      }
+    ]
+  },
+  "versionId": "81912573-44bc-4675-936c-31cc45ebfc81",
+  "activeVersionId": null,
+  "versionCounter": 22,
+  "triggerCount": 0,
+  "shared": [
+    {
+      "updatedAt": "2026-02-19T12:31:47.843Z",
+      "createdAt": "2026-02-19T12:31:47.843Z",
+      "role": "workflow:owner",
+      "workflowId": "eJQAcBlb45pMvMFw",
+      "projectId": "DVYglwqlfMJuM9zT",
+      "project": {
+        "updatedAt": "2025-10-05T18:15:43.115Z",
+        "createdAt": "2025-08-13T20:40:27.041Z",
+        "id": "DVYglwqlfMJuM9zT",
+        "name": "Laksh Agrawal <laksh@supastack.ai>",
+        "type": "personal",
+        "icon": null,
+        "description": null,
+        "creatorId": "ec164287-6cde-4606-b0c4-9d4cd30c3b98",
+        "projectRelations": [
+          {
+            "updatedAt": "2025-08-13T20:40:27.041Z",
+            "createdAt": "2025-08-13T20:40:27.041Z",
+            "userId": "ec164287-6cde-4606-b0c4-9d4cd30c3b98",
+            "projectId": "DVYglwqlfMJuM9zT",
+            "user": {
+              "updatedAt": "2026-02-21T15:10:03.000Z",
+              "createdAt": "2025-08-13T20:40:26.693Z",
+              "id": "ec164287-6cde-4606-b0c4-9d4cd30c3b98",
+              "email": "laksh@supastack.ai",
+              "firstName": "Laksh",
+              "lastName": "Agrawal",
+              "personalizationAnswers": {
+                "version": "v4",
+                "personalization_survey_submitted_at": "2025-08-13T20:49:45.872Z",
+                "personalization_survey_n8n_version": "1.106.3",
+                "companyIndustryExtended": [],
+                "companyType": "other"
+              },
+              "settings": {
+                "userActivated": true,
+                "easyAIWorkflowOnboarded": true,
+                "firstSuccessfulWorkflowId": "omMzGXpD7rLUfAFm",
+                "userActivatedAt": 1755124587490,
+                "npsSurvey": {
+                  "responded": true,
+                  "lastShownAt": 1759741367883
+                }
+              },
+              "disabled": false,
+              "mfaEnabled": false,
+              "lastActiveAt": "2026-02-20",
+              "isPending": false
+            }
+          }
+        ]
+      }
+    }
+  ],
+  "tags": [],
+  "activeVersion": null
+}

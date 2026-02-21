@@ -21,11 +21,14 @@ This ensures:
 ```
 workflows/
 ├── phase1-completed/    # ✅ Phase 1 - Delivered & Complete
-│   ├── XltKceTO8rGqvP4j.json
-│   ├── 242d7QieSdQcAsfd.json
-│   └── c8V9tx3p92KyA5mD.json
+│   ├── XltKceTO8rGqvP4j.json (100KB)
+│   ├── 242d7QieSdQcAsfd.json (89KB)
+│   └── c8V9tx3p92KyA5mD.json (89KB)
 └── phase2/              # 🚧 Phase 2 - In Development
-    └── (new workflows will go here)
+    ├── eJQAcBlb45pMvMFw.json (55KB)  - Requirements Generator
+    ├── ig0YNPdQmYaQX9ds.json (44KB)  - Document Processor
+    ├── 1ynOLUqzJRBweKUj.json (37KB)  - Document Categorizer + Dispatch
+    └── 4Zu1k5LxauFl7crW.json (1.8MB) - Dimension Analysis (Document-Based)
 ```
 
 ---
@@ -64,7 +67,33 @@ workflows/
 
 ## Phase 2 Workflows (IN DEVELOPMENT 🚧)
 
-_Workflows for Phase 2 will be documented here as they are created._
+### 1. Phase 2 - Requirements Generator ANKITUSE
+**File:** `phase2/eJQAcBlb45pMvMFw.json` (55KB)
+**ID:** eJQAcBlb45pMvMFw
+**Description:** Generates requirements and interview questions for Phase 2 deep-dive assessments.
+
+---
+
+### 2. Phase 2 - Document Processor ANKITUSE
+**File:** `phase2/ig0YNPdQmYaQX9ds.json` (44KB)
+**ID:** ig0YNPdQmYaQX9ds
+**Description:** Processes uploaded customer documents for analysis.
+
+---
+
+### 3. Phase 2 - Document Categorizer + Dimension Dispatch ANKITUSE
+**File:** `phase2/1ynOLUqzJRBweKUj.json` (37KB)
+**ID:** 1ynOLUqzJRBweKUj
+**Description:** Categorizes documents and dispatches them to relevant dimension analysis workflows.
+
+---
+
+### 4. Phase 2 - Dimension Analysis (Document-Based) v3 ANKITUSE
+**File:** `phase2/4Zu1k5LxauFl7crW.json` (1.8MB)
+**ID:** 4Zu1k5LxauFl7crW
+**Description:** Deep-dive dimension analysis using customer-provided documents (Phase 2 iteration).
+
+**Note:** This is a large workflow with extensive document processing capabilities.
 
 ---
 
