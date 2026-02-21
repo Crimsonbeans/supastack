@@ -1,0 +1,2433 @@
+{
+  "updatedAt": "2026-02-12T20:12:23.204Z",
+  "createdAt": "2026-02-05T13:41:08.658Z",
+  "id": "XltKceTO8rGqvP4j",
+  "name": "Search Analysis - Dimension Workflow - Integration",
+  "description": null,
+  "active": true,
+  "isArchived": false,
+  "nodes": [
+    {
+      "parameters": {
+        "inputSource": "passthrough"
+      },
+      "type": "n8n-nodes-base.executeWorkflowTrigger",
+      "typeVersion": 1.1,
+      "position": [
+        -2208,
+        880
+      ],
+      "id": "5926a3c2-0d2d-44af-914d-b827ebefa3eb",
+      "name": "Dimension Input Trigger"
+    },
+    {
+      "parameters": {
+        "model": "openai/gpt-5-mini",
+        "options": {}
+      },
+      "type": "@n8n/n8n-nodes-langchain.lmChatOpenRouter",
+      "typeVersion": 1,
+      "position": [
+        -1984,
+        1088
+      ],
+      "id": "e196c6b6-d79e-4809-a0d1-8d25beafe4f7",
+      "name": "Sonnet 4 - Query Gen",
+      "credentials": {
+        "openRouterApi": {
+          "id": "DPnbXJEN5OpXBJeM",
+          "name": "OpenRouter account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "promptType": "define",
+        "text": "=You are an expert research strategist. Generate targeted search queries to assess **{{ $json.companyName }}**'s maturity in the **{{ $json.dimensionName }}** dimension.\n\n## COMPANY CONTEXT\n- **Company:** {{ $json.companyName }}\n- **Domain:** {{ $json.companyDomain }}\n- **Industry:** {{ $json.classification.industry_primary }}\n- **Vertical:** {{ $json.classification.industry_vertical }}\n- **Size:** {{ $json.classification.employee_count_range }} employees\n- **ARR Range:** {{ $json.classification.estimated_arr_range }}\n- **Service Model:** {{ $json.classification.service_model }}\n- **Target Customer:** {{ $json.classification.target_customer }}\n\n## DIMENSION TO ASSESS\n- **Dimension:** {{ $json.dimensionName }} ({{ $json.dimensionKey }})\n- **Weight:** {{ $json.dimensionWeight }} ({{ Math.round($json.dimensionWeight * 100) }}%)\n- **Assessment Type:** {{ $json.assessmentType }}\n\n## QUESTIONS TO FIND EVIDENCE FOR\n{{ JSON.stringify($json.dimensionQuestions.slice(0, 10), null, 2) }}\n\n## MATURITY FRAMEWORK\nThis assessment uses CRAWL/WALK/RUN maturity levels:\n- **CRAWL (1-2):** Basic/reactive, manual processes, no formal structure\n- **WALK (3-4):** Documented processes, some automation, defined KPIs\n- **RUN (5):** AI-optimized, predictive, fully automated, industry-leading\n\n## YOUR TASK\nGenerate 10-15 targeted search queries that will help find PUBLIC evidence about this company's capabilities in {{ $json.dimensionName }}.\n\n### Query Types to Include:\n1. **Company-specific:** \"{{ $json.companyName }} [topic]\" \n2. **Domain-specific:** \"site:{{ $json.companyDomain }} [topic]\"\n3. **Industry benchmarks:** \"{{ $json.classification.industry_vertical }} [metric] benchmark\"\n4. **Job postings:** \"{{ $json.companyName }} careers [relevant role]\"\n5. **News/PR:** \"{{ $json.companyName }} partnership announcement\"\n6. **LinkedIn:** \"{{ $json.companyName }} [leadership role]\"\n7. **Reviews/ratings:** \"{{ $json.companyName }} reviews [platform]\"\n\n### Output Format (JSON only, no markdown):\n{\n  \"search_queries\": [\n    {\n      \"query\": \"exact search string\",\n      \"intent\": \"what evidence we're looking for\",\n      \"question_alignment\": \"which question ID(s) this helps answer\",\n      \"priority\": \"high|medium|low\",\n      \"expected_evidence\": \"type of information expected\"\n    }\n  ]\n}\n\n### Requirements:\n- Generate 10-15 queries total\n- At least 5 high priority queries\n- Cover multiple subcategories from the questions\n- Use actual company name and domain\n- Focus on publicly findable information\n- Include industry-specific terminology for {{ $json.classification.industry_primary }}\n\nReturn ONLY valid JSON, no explanation or markdown.",
+        "options": {
+          "systemMessage": "You are a research query specialist. Return only valid JSON with no markdown formatting or explanation."
+        }
+      },
+      "type": "@n8n/n8n-nodes-langchain.agent",
+      "typeVersion": 2.2,
+      "position": [
+        -1984,
+        880
+      ],
+      "id": "1fdb6180-62b3-4f73-bda2-b0730c8c631e",
+      "name": "Search Query Generator"
+    },
+    {
+      "parameters": {
+        "jsCode": "// Parse search queries from AI output\nconst input = $input.first().json;\nconst outputString = input.output;\n\n// Try to parse JSON directly or extract from markdown\nlet searchData;\ntry {\n  // First try direct JSON parse\n  searchData = JSON.parse(outputString);\n} catch (e) {\n  // Try extracting from markdown code block\n  const jsonMatch = outputString.match(/```(?:json)?\\n?([\\s\\S]*?)\\n?```/);\n  if (jsonMatch) {\n    searchData = JSON.parse(jsonMatch[1]);\n  } else {\n    // Try finding JSON object directly\n    const objectMatch = outputString.match(/\\{[\\s\\S]*\\}/);\n    if (objectMatch) {\n      searchData = JSON.parse(objectMatch[0]);\n    } else {\n      throw new Error('Could not find JSON in output');\n    }\n  }\n}\n\nconst searchQueries = searchData.search_queries;\nif (!searchQueries || !Array.isArray(searchQueries)) {\n  throw new Error('No search_queries array found');\n}\n\n// Get original dimension data from trigger\nconst dimensionData = $('Dimension Input Trigger').first().json;\n\n// Return each query as separate item\nreturn searchQueries.map((query, index) => ({\n  json: {\n    query: query.query,\n    intent: query.intent,\n    question_alignment: query.question_alignment,\n    priority: query.priority,\n    expected_evidence: query.expected_evidence,\n    query_index: index + 1,\n    total_queries: searchQueries.length,\n    // Pass through dimension context\n    dimensionKey: dimensionData.dimensionKey,\n    dimensionName: dimensionData.dimensionName,\n    companyName: dimensionData.companyName,\n    companyDomain: dimensionData.companyDomain\n  }\n}));"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        -1664,
+        880
+      ],
+      "id": "b68c799f-69fb-4ce4-b61a-b5ed0348fcfd",
+      "name": "Parse Search Queries"
+    },
+    {
+      "parameters": {
+        "batchSize": 5,
+        "options": {}
+      },
+      "type": "n8n-nodes-base.splitInBatches",
+      "typeVersion": 3,
+      "position": [
+        -1424,
+        880
+      ],
+      "id": "a01ca715-a4a9-4db6-9f60-b6029265ca9e",
+      "name": "Batch Queries"
+    },
+    {
+      "parameters": {
+        "amount": 1
+      },
+      "type": "n8n-nodes-base.wait",
+      "typeVersion": 1.1,
+      "position": [
+        -944,
+        1040
+      ],
+      "id": "0ef33024-eb00-4c61-8aff-66310d3af7bc",
+      "name": "Rate Limit Wait",
+      "webhookId": "733fbdd0-1957-41f0-8b0f-bc58ee84ac22"
+    },
+    {
+      "parameters": {
+        "jsCode": "// Aggregate all search results from the batch loop\nconst allResults = [];\nconst dimensionData = $('Dimension Input Trigger').first().json;\n\nfor (const item of $input.all()) {\n  // Check if this item has search results\n  if (item.json.results || item.json.answer) {\n    allResults.push({\n      query: item.json.query || 'unknown',\n      answer: item.json.answer || null,\n      results: item.json.results || [],\n      response_time: item.json.response_time || null\n    });\n  }\n}\n\n// Calculate search statistics\nconst totalResults = allResults.reduce((sum, r) => sum + (r.results?.length || 0), 0);\nconst queriesWithAnswers = allResults.filter(r => r.answer).length;\n\nreturn [{\n  json: {\n    // Search results summary\n    searchSummary: {\n      totalQueries: allResults.length,\n      totalResults: totalResults,\n      queriesWithAnswers: queriesWithAnswers,\n      timestamp: new Date().toISOString()\n    },\n    searchResults: allResults,\n    \n    // Pass through all dimension data for analysis\n    dimensionKey: dimensionData.dimensionKey,\n    dimensionName: dimensionData.dimensionName,\n    dimensionWeight: dimensionData.dimensionWeight,\n    dimensionOrder: dimensionData.dimensionOrder,\n    dimensionQuestions: dimensionData.dimensionQuestions,\n    questionCount: dimensionData.questionCount,\n    \n    // Assessment context\n    assessmentId: dimensionData.assessmentId,\n    assessmentVersionId: dimensionData.assessmentVersionId,\n    organizationId: dimensionData.organizationId,\n    companyProfileId: dimensionData.companyProfileId,\n    \n    // Company context\n    companyName: dimensionData.companyName,\n    companyDomain: dimensionData.companyDomain,\n    classification: dimensionData.classification,\n    assessmentType: dimensionData.assessmentType,\n    \n    // Playbook context\n    playbookMetadata: dimensionData.playbookMetadata,\n    scoringModel: dimensionData.scoringModel,\n    totalDimensions: dimensionData.totalDimensions\n  }\n}];"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        -1184,
+        720
+      ],
+      "id": "1379e32d-0d7d-43af-99f4-02b140e714a1",
+      "name": "Aggregate Search Results"
+    },
+    {
+      "parameters": {
+        "model": "anthropic/claude-sonnet-4.5",
+        "options": {}
+      },
+      "type": "@n8n/n8n-nodes-langchain.lmChatOpenRouter",
+      "typeVersion": 1,
+      "position": [
+        -928,
+        928
+      ],
+      "id": "b5cfa459-1c72-4fcc-9c40-1b0a963477f6",
+      "name": "Sonnet 4.5 - Analysis",
+      "credentials": {
+        "openRouterApi": {
+          "id": "DPnbXJEN5OpXBJeM",
+          "name": "OpenRouter account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "promptType": "define",
+        "text": "=You are an expert {{ $json.assessmentType }} analyst. Evaluate **{{ $json.companyName }}** against the **{{ $json.dimensionName }}** dimension using the search evidence provided.\n\n## COMPANY PROFILE\n- **Company:** {{ $json.companyName }}\n- **Domain:** {{ $json.companyDomain }}\n- **Industry:** {{ $json.classification.industry_primary }}\n- **Vertical:** {{ $json.classification.industry_vertical }}\n- **Size:** {{ $json.classification.employee_count_range }} employees\n- **ARR Range:** {{ $json.classification.estimated_arr_range }}\n- **Service Model:** {{ $json.classification.service_model }}\n- **Target Customer:** {{ $json.classification.target_customer }}\n\n## DIMENSION BEING ASSESSED\n- **Dimension:** {{ $json.dimensionName }}\n- **Key:** {{ $json.dimensionKey }}\n- **Weight:** {{ $json.dimensionWeight }} ({{ Math.round($json.dimensionWeight * 100) }}%)\n- **Question Count:** {{ $json.questionCount }}\n\n## SCORING MODEL\n{{ JSON.stringify($json.scoringModel, null, 2) }}\n\n## DIMENSION QUESTIONS TO EVALUATE\n{{ JSON.stringify($json.dimensionQuestions, null, 2) }}\n\n## SEARCH EVIDENCE COLLECTED\n**Search Summary:** {{ $json.searchSummary.totalQueries }} queries, {{ $json.searchSummary.totalResults }} results found\n\n**Search Results:**\n{{ JSON.stringify($json.searchResults, null, 2) }}\n\n---\n\n## YOUR ANALYSIS TASK\n\nAnalyze the company against this dimension using ONLY the evidence from search results. Be honest about data limitations.\n\n### Maturity Framework (CRAWL/WALK/RUN)\n- **CRAWL (Score 1-2, 0-40%):** Reactive, ad-hoc, no formal processes, manual operations\n- **WALK (Score 3-4, 41-70%):** Documented processes, some automation, defined KPIs, regular reviews\n- **RUN (Score 5, 71-100%):** AI-optimized, predictive analytics, fully automated, industry-leading\n\n### Confidence Scoring Guidelines\n- **verified (90-100%):** Multiple corroborating sources, specific metrics found\n- **validated (70-89%):** Good evidence from reliable sources\n- **informed_estimate (50-69%):** Some evidence, reasonable inferences (typical for webscan)\n- **low_confidence (30-49%):** Limited evidence, significant assumptions\n- **insufficient_data (0-29%):** Cannot make reliable assessment\n\n---\n\n## REQUIRED OUTPUT FORMAT (JSON ONLY)\n\n**CRITICAL JSON FORMATTING RULES:**\n- ALL string values must have internal double quotes escaped with backslash: \\\"\n- Example: \"quote\": \"The \\\"LinkedIn\\\" and \\\"Facebook\\\" presence shows digital engagement\"\n- Never write: \"quote\": \"The \"LinkedIn\" and \"Facebook\" presence\" (this breaks JSON)\n- If quoting text that contains quotes, always escape them: \\\"text\\\"\n- Test your JSON is valid before outputting\n```json\n{\n  \"raw_score\": <0-100 integer>,\n  \"maturity_level\": \"crawl|walk|run\",\n  \n  \"confidence_score\": <0-100 integer>,\n  \"confidence_category\": \"verified|validated|informed_estimate|low_confidence|insufficient_data\",\n  \"confidence_factors\": {\n    \"data_sources_found\": <number>,\n    \"data_points_extracted\": <number>,\n    \"assumptions_made\": <number>,\n    \"gaps_identified\": <number>\n  },\n  \"limitations\": [\"limitation 1\", \"limitation 2\"],\n  \"confidence_improvement_suggestions\": [\n    {\n      \"suggestion\": \"what would improve confidence\",\n      \"data_needed\": \"specific data required\",\n      \"potential_confidence_gain\": <5-20>\n    }\n  ],\n  \n  \"analysis_summary\": \"2-3 sentence executive summary of findings\",\n  \n  \"strengths\": [\n    {\n      \"title\": \"strength name\",\n      \"description\": \"detailed description\",\n      \"evidence\": \"specific evidence from search results - escape any quotes with backslash\"\n    }\n  ],\n  \n  \"gaps\": [\n    {\n      \"title\": \"gap name\",\n      \"description\": \"detailed description\",\n      \"impact\": \"business impact\",\n      \"priority\": \"critical|high|medium|low\"\n    }\n  ],\n  \n  \"quick_wins\": [\n    {\n      \"action\": \"specific action\",\n      \"timeline\": \"30|60|90 days\",\n      \"expected_impact\": \"measurable outcome\"\n    }\n  ],\n  \n  \"recommendations\": [\n    {\n      \"title\": \"recommendation name\",\n      \"description\": \"detailed description\",\n      \"effort\": \"low|medium|high\",\n      \"impact\": \"low|medium|high\",\n      \"timeline\": \"short|medium|long term\"\n    }\n  ],\n  \n  \"evidence_sources\": [\n    {\n      \"source_url\": \"URL if available\",\n      \"source_type\": \"website|news|job_posting|review|linkedin\",\n      \"relevance\": \"how this informed the assessment\",\n      \"quote\": \"key excerpt - ESCAPE ALL INTERNAL QUOTES with backslash before quote mark\"\n    }\n  ]\n}\n```\n\n### Critical Instructions:\n1. Base scores ONLY on evidence found - do not assume capabilities\n2. For webscan analysis, confidence typically maxes at 65% (informed_estimate)\n3. Be specific about what evidence supports each finding\n4. Identify clear gaps where no evidence was found\n5. Recommendations should be actionable and specific to this company\n6. **ESCAPE ALL DOUBLE QUOTES IN STRING VALUES:** Use \\\" for any quotes within text\n7. Return ONLY valid JSON inside markdown code block, no extra text\n8. Verify your JSON is valid before responding\n\nAnalyze {{ $json.companyName }}'s {{ $json.dimensionName }} maturity now.",
+        "options": {
+          "systemMessage": "You are an expert business analyst specializing in GTM and Partnership maturity assessments. Return only valid JSON output matching the exact schema specified. Be evidence-based and honest about limitations."
+        }
+      },
+      "type": "@n8n/n8n-nodes-langchain.agent",
+      "typeVersion": 2.2,
+      "position": [
+        -944,
+        720
+      ],
+      "id": "6af68654-9a65-4205-9ec9-d50ac175dec1",
+      "name": "Dimension Analysis Agent"
+    },
+    {
+      "parameters": {
+        "jsCode": "// Parse analysis output and prepare for Supabase insert\nconst input = $input.first().json;\nlet outputString = input.output;\nconst dimensionData = $('Aggregate Search Results').first().json;\n\n// Extract JSON from markdown code block\nconst jsonMatch = outputString.match(/```(?:json)?\\s*\\n([\\s\\S]*?)\\n```/);\nif (jsonMatch) {\n  outputString = jsonMatch[1].trim();\n}\n\n// Parse the cleaned JSON\nlet analysis;\ntry {\n  analysis = JSON.parse(outputString);\n} catch (e) {\n  console.log(`JSON Parse failed: ${e.message}. Falling back to default object.`);\n  analysis = {\n    raw_score: 0,\n    maturity_level: \"crawl\",\n    confidence_score: 0,\n    confidence_category: \"insufficient_data\",\n    analysis_summary: \"Error parsing AI analysis output. Raw output saved in full_analysis.\",\n    limitations: [\"JSON Parse Error from Model\"],\n    strengths: [],\n    gaps: [],\n    quick_wins: [],\n    recommendations: [],\n    evidence_sources: []\n  };\n}\n\n// Calculate weighted score\nconst weightedScore = (analysis.raw_score * dimensionData.dimensionWeight).toFixed(2);\n\n// Prepare the record for dimension_analyses table\nreturn [{\n  json: {\n    version_id: dimensionData.assessmentVersionId,\n    dimension_key: dimensionData.dimensionKey,\n    dimension_name: dimensionData.dimensionName,\n    dimension_weight: dimensionData.dimensionWeight,\n    analysis_type: 'webscan',\n    raw_score: analysis.raw_score || 0,\n    weighted_score: parseFloat(weightedScore) || 0,\n    maturity_level: analysis.maturity_level || 'crawl',\n    confidence_score: analysis.confidence_score || 0,\n    confidence_category: analysis.confidence_category || 'insufficient_data',\n    confidence_factors: analysis.confidence_factors || {},\n    limitations: analysis.limitations || [],\n    confidence_improvement_suggestions: analysis.confidence_improvement_suggestions || [],\n    analysis_summary: analysis.analysis_summary || \"No summary available\",\n    full_analysis: analysis,\n    strengths: analysis.strengths || [],\n    gaps: analysis.gaps || [],\n    quick_wins: analysis.quick_wins || [],\n    recommendations: analysis.recommendations || [],\n    evidence_sources: analysis.evidence_sources || [],\n    model_used: 'claude-sonnet-4-5-20250929',\n    started_at: new Date().toISOString(),\n    completed_at: new Date().toISOString(),\n    assessmentId: dimensionData.assessmentId,\n    organizationId: dimensionData.organizationId,\n    companyName: dimensionData.companyName\n  }\n}];"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        -624,
+        720
+      ],
+      "id": "fe94d679-555a-411c-9d53-7be73891a8cd",
+      "name": "Prepare for Supabase"
+    },
+    {
+      "parameters": {
+        "jsCode": "// Return success summary\nconst insertResult = $input.first().json;\nconst preparedData = $('Prepare for Supabase').first().json;\n\nreturn [{\n  json: {\n    success: true,\n    message: `Dimension analysis completed for ${preparedData.dimension_name}`,\n    summary: {\n      company: preparedData.companyName,\n      dimension: preparedData.dimension_name,\n      dimension_key: preparedData.dimension_key,\n      raw_score: preparedData.raw_score,\n      maturity_level: preparedData.maturity_level,\n      confidence_score: preparedData.confidence_score,\n      confidence_category: preparedData.confidence_category\n    },\n    assessment_version_id: preparedData.version_id,\n    organization_id: preparedData.organizationId,\n    completed_at: new Date().toISOString()\n  }\n}];"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        -224,
+        720
+      ],
+      "id": "9537969d-de97-4029-b82f-0fef0ec2ff06",
+      "name": "Return Success"
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "https://api.tavily.com/search",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "Content-Type",
+              "value": "application/json"
+            }
+          ]
+        },
+        "sendBody": true,
+        "bodyParameters": {
+          "parameters": [
+            {
+              "name": "api_key",
+              "value": "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"
+            },
+            {
+              "name": "query",
+              "value": "={{ $json.query }}"
+            },
+            {
+              "name": "search_depth",
+              "value": "advanced"
+            },
+            {
+              "name": "max_results",
+              "value": "20"
+            },
+            {
+              "name": "include_answer",
+              "value": true
+            },
+            {
+              "name": "include_raw_content",
+              "value": false
+            }
+          ]
+        },
+        "options": {}
+      },
+      "id": "089d792e-26b1-4190-b2f2-5f0ed04ceb84",
+      "name": "Tavily Search",
+      "type": "n8n-nodes-base.httpRequest",
+      "position": [
+        -1136,
+        976
+      ],
+      "typeVersion": 3,
+      "executeOnce": false
+    },
+    {
+      "parameters": {
+        "tableId": "dimension_analyses",
+        "fieldsUi": {
+          "fieldValues": [
+            {
+              "fieldId": "assessment_id",
+              "fieldValue": "={{ $('Dimension Input Trigger').first().json.assessmentId }}"
+            },
+            {
+              "fieldId": "version_id",
+              "fieldValue": "={{ $json.version_id }}"
+            },
+            {
+              "fieldId": "dimension_key",
+              "fieldValue": "={{ $json.dimension_key }}"
+            },
+            {
+              "fieldId": "stage",
+              "fieldValue": "web_scan"
+            },
+            {
+              "fieldId": "iteration",
+              "fieldValue": "1"
+            },
+            {
+              "fieldId": "raw_score",
+              "fieldValue": "={{ $json.raw_score }}"
+            },
+            {
+              "fieldId": "confidence_score",
+              "fieldValue": "={{ $json.confidence_score }}"
+            },
+            {
+              "fieldId": "score_delta",
+              "fieldValue": "={{ {\"previous_raw_score\": null, \"raw_score_change\": 0, \"previous_confidence\": null, \"confidence_change\": 0} }}"
+            },
+            {
+              "fieldId": "full_analysis",
+              "fieldValue": "={{ $json.full_analysis }}"
+            },
+            {
+              "fieldId": "analysis_summary",
+              "fieldValue": "={{ $json.analysis_summary }}"
+            },
+            {
+              "fieldId": "dimension_name",
+              "fieldValue": "={{ $json.dimension_name }}"
+            }
+          ]
+        }
+      },
+      "type": "n8n-nodes-base.supabase",
+      "typeVersion": 1,
+      "position": [
+        -432,
+        720
+      ],
+      "id": "7dc660d1-0fbf-4b3a-8f82-c9e0023f61c8",
+      "name": "Insert Dimension Analysis",
+      "credentials": {
+        "supabaseApi": {
+          "id": "FTSugGkqwnuu6irz",
+          "name": "SupaStack"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "operation": "getAll",
+        "tableId": "dimension_analyses",
+        "filters": {
+          "conditions": [
+            {
+              "keyName": "version_id",
+              "condition": "eq",
+              "keyValue": "={{ $json.version_id }}"
+            }
+          ]
+        }
+      },
+      "type": "n8n-nodes-base.supabase",
+      "typeVersion": 1,
+      "position": [
+        -176,
+        928
+      ],
+      "id": "29991e8e-96ca-4618-aad1-5e1e0866552c",
+      "name": "Count Completed",
+      "credentials": {
+        "supabaseApi": {
+          "id": "FTSugGkqwnuu6irz",
+          "name": "SupaStack"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "jsCode": "return { count: $input.all().length };"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        96,
+        832
+      ],
+      "id": "b9100bd2-3915-48d0-bfe8-bd97af3ec695",
+      "name": "Aggregate Count"
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "number": [
+            {
+              "value1": "={{ $json.count }}",
+              "operation": "equal",
+              "value2": "={{ $('Aggregate Search Results').first().json.totalDimensions }}"
+            }
+          ]
+        }
+      },
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 1,
+      "position": [
+        400,
+        928
+      ],
+      "id": "320743aa-a237-43c1-9fb3-63f0acd48736",
+      "name": "Is Last Dimension"
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "https://n8n.srv957266.hstgr.cloud/webhook/291c59b9-ea34-4068-bf04-36bb7b6a3fdd",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "Content-Type",
+              "value": "application/json"
+            }
+          ]
+        },
+        "sendBody": true,
+        "bodyParameters": {
+          "parameters": [
+            {
+              "name": "assessment_version_id",
+              "value": "={{ $('Aggregate Search Results').first().json.assessmentVersionId }}"
+            },
+            {
+              "name": "assessment_id",
+              "value": "={{ $('Aggregate Search Results').first().json.assessmentId }}"
+            },
+            {
+              "name": "organization_id",
+              "value": "={{ $('Aggregate Search Results').first().json.organizationId }}"
+            },
+            {
+              "name": "id",
+              "value": "={{ $('Aggregate Search Results').first().json.organizationId }}"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 3,
+      "position": [
+        832,
+        928
+      ],
+      "id": "97764c3d-17f5-4fd0-8571-1c36f87ee0c8",
+      "name": "Trigger Report Gen"
+    }
+  ],
+  "connections": {
+    "Dimension Input Trigger": {
+      "main": [
+        [
+          {
+            "node": "Search Query Generator",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Sonnet 4 - Query Gen": {
+      "ai_languageModel": [
+        [
+          {
+            "node": "Search Query Generator",
+            "type": "ai_languageModel",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Search Query Generator": {
+      "main": [
+        [
+          {
+            "node": "Parse Search Queries",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Parse Search Queries": {
+      "main": [
+        [
+          {
+            "node": "Batch Queries",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Batch Queries": {
+      "main": [
+        [
+          {
+            "node": "Aggregate Search Results",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Tavily Search",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Rate Limit Wait": {
+      "main": [
+        [
+          {
+            "node": "Batch Queries",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Aggregate Search Results": {
+      "main": [
+        [
+          {
+            "node": "Dimension Analysis Agent",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Sonnet 4.5 - Analysis": {
+      "ai_languageModel": [
+        [
+          {
+            "node": "Dimension Analysis Agent",
+            "type": "ai_languageModel",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Dimension Analysis Agent": {
+      "main": [
+        [
+          {
+            "node": "Prepare for Supabase",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Prepare for Supabase": {
+      "main": [
+        [
+          {
+            "node": "Insert Dimension Analysis",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Tavily Search": {
+      "main": [
+        [
+          {
+            "node": "Rate Limit Wait",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Insert Dimension Analysis": {
+      "main": [
+        [
+          {
+            "node": "Return Success",
+            "type": "main",
+            "index": 0
+          },
+          {
+            "node": "Count Completed",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Count Completed": {
+      "main": [
+        [
+          {
+            "node": "Aggregate Count",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Aggregate Count": {
+      "main": [
+        [
+          {
+            "node": "Is Last Dimension",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Is Last Dimension": {
+      "main": [
+        [
+          {
+            "node": "Trigger Report Gen",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "settings": {
+    "executionOrder": "v1",
+    "availableInMCP": false
+  },
+  "staticData": null,
+  "meta": null,
+  "pinData": {
+    "Dimension Input Trigger": [
+      {
+        "json": {
+          "dimensionKey": "operations",
+          "dimensionName": "Operations & Process Excellence",
+          "dimensionOrder": 5,
+          "dimensionWeight": 0.16,
+          "dimensionQuestions": [
+            {
+              "id": "operations_001",
+              "text": "How well mapped is your customer journey?",
+              "order": 1,
+              "options": [
+                {
+                  "label": "No mapping of EaaS customer journey",
+                  "value": 1,
+                  "maturity_level": "reactive"
+                },
+                {
+                  "label": "Basic stages (lead, audit, proposal, contract)",
+                  "value": 2,
+                  "maturity_level": "developing"
+                },
+                {
+                  "label": "Detailed journey including implementation and M&V",
+                  "value": 3,
+                  "maturity_level": "defined"
+                },
+                {
+                  "label": "Multi-persona journeys (facility manager, CFO, sustainability)",
+                  "value": 4,
+                  "maturity_level": "advanced"
+                },
+                {
+                  "label": "AI-optimized paths per customer segment",
+                  "value": 5,
+                  "maturity_level": "optimized"
+                }
+              ],
+              "required": true,
+              "subcategory": "Customer Journey",
+              "question_type": "single_select",
+              "scoring_criteria": {
+                "max_score": 5,
+                "scoring_type": "direct",
+                "maturity_mapping": {
+                  "1": "reactive",
+                  "2": "developing",
+                  "3": "defined",
+                  "4": "advanced",
+                  "5": "optimized"
+                }
+              }
+            },
+            {
+              "id": "operations_002",
+              "text": "How many customer touchpoints do you track?",
+              "order": 2,
+              "options": [
+                {
+                  "label": "Under 5 (calls and emails only)",
+                  "value": 1,
+                  "maturity_level": "reactive"
+                },
+                {
+                  "label": "5-10 basic interactions",
+                  "value": 2,
+                  "maturity_level": "developing"
+                },
+                {
+                  "label": "10-20 including site visits and reporting",
+                  "value": 3,
+                  "maturity_level": "defined"
+                },
+                {
+                  "label": "20-50 with energy monitoring interactions",
+                  "value": 4,
+                  "maturity_level": "advanced"
+                },
+                {
+                  "label": "50+ with AI tracking all engagement",
+                  "value": 5,
+                  "maturity_level": "optimized"
+                }
+              ],
+              "required": true,
+              "subcategory": "Customer Journey",
+              "question_type": "single_select",
+              "scoring_criteria": {
+                "max_score": 5,
+                "scoring_type": "direct",
+                "maturity_mapping": {
+                  "1": "reactive",
+                  "2": "developing",
+                  "3": "defined",
+                  "4": "advanced",
+                  "5": "optimized"
+                }
+              }
+            },
+            {
+              "id": "operations_003",
+              "text": "What's your average speed to lead?",
+              "order": 3,
+              "options": [
+                {
+                  "label": "Over 72 hours for initial response",
+                  "value": 1,
+                  "maturity_level": "reactive"
+                },
+                {
+                  "label": "48-72 hours",
+                  "value": 2,
+                  "maturity_level": "developing"
+                },
+                {
+                  "label": "24-48 hours",
+                  "value": 3,
+                  "maturity_level": "defined"
+                },
+                {
+                  "label": "4-24 hours",
+                  "value": 4,
+                  "maturity_level": "advanced"
+                },
+                {
+                  "label": "Under 4 hours with AI qualification",
+                  "value": 5,
+                  "maturity_level": "optimized"
+                }
+              ],
+              "required": true,
+              "subcategory": "Lead Management",
+              "question_type": "single_select",
+              "scoring_criteria": {
+                "max_score": 5,
+                "scoring_type": "direct",
+                "maturity_mapping": {
+                  "1": "reactive",
+                  "2": "developing",
+                  "3": "defined",
+                  "4": "advanced",
+                  "5": "optimized"
+                }
+              }
+            },
+            {
+              "id": "operations_004",
+              "text": "How do you route leads?",
+              "order": 4,
+              "options": [
+                {
+                  "label": "Manual assignment by sales manager",
+                  "value": 1,
+                  "maturity_level": "reactive"
+                },
+                {
+                  "label": "Round robin distribution",
+                  "value": 2,
+                  "maturity_level": "developing"
+                },
+                {
+                  "label": "Territory-based by geography",
+                  "value": 3,
+                  "maturity_level": "defined"
+                },
+                {
+                  "label": "Skill-based routing by vertical and project type",
+                  "value": 4,
+                  "maturity_level": "advanced"
+                },
+                {
+                  "label": "AI-optimized routing for best fit",
+                  "value": 5,
+                  "maturity_level": "optimized"
+                }
+              ],
+              "required": true,
+              "subcategory": "Lead Management",
+              "question_type": "single_select",
+              "scoring_criteria": {
+                "max_score": 5,
+                "scoring_type": "direct",
+                "maturity_mapping": {
+                  "1": "reactive",
+                  "2": "developing",
+                  "3": "defined",
+                  "4": "advanced",
+                  "5": "optimized"
+                }
+              }
+            },
+            {
+              "id": "operations_005",
+              "text": "What's your lead qualification accuracy?",
+              "order": 5,
+              "options": [
+                {
+                  "label": "Under 35% of qualified leads convert",
+                  "value": 1,
+                  "maturity_level": "reactive"
+                },
+                {
+                  "label": "35-45%",
+                  "value": 2,
+                  "maturity_level": "developing"
+                },
+                {
+                  "label": "45-55%",
+                  "value": 3,
+                  "maturity_level": "defined"
+                },
+                {
+                  "label": "55-70%",
+                  "value": 4,
+                  "maturity_level": "advanced"
+                },
+                {
+                  "label": "70%+ with AI qualification",
+                  "value": 5,
+                  "maturity_level": "optimized"
+                }
+              ],
+              "required": true,
+              "subcategory": "Lead Management",
+              "question_type": "single_select",
+              "scoring_criteria": {
+                "max_score": 5,
+                "scoring_type": "direct",
+                "maturity_mapping": {
+                  "1": "reactive",
+                  "2": "developing",
+                  "3": "defined",
+                  "4": "advanced",
+                  "5": "optimized"
+                }
+              }
+            },
+            {
+              "id": "operations_006",
+              "text": "How standardized is your sales process?",
+              "order": 6,
+              "options": [
+                {
+                  "label": "No defined process, each rep does own thing",
+                  "value": 1,
+                  "maturity_level": "reactive"
+                },
+                {
+                  "label": "Informal process with basic milestones",
+                  "value": 2,
+                  "maturity_level": "developing"
+                },
+                {
+                  "label": "Documented stages with exit criteria",
+                  "value": 3,
+                  "maturity_level": "defined"
+                },
+                {
+                  "label": "Enforced methodology with coaching",
+                  "value": 4,
+                  "maturity_level": "advanced"
+                },
+                {
+                  "label": "AI-guided process with dynamic recommendations",
+                  "value": 5,
+                  "maturity_level": "optimized"
+                }
+              ],
+              "required": true,
+              "subcategory": "Sales Process",
+              "question_type": "single_select",
+              "scoring_criteria": {
+                "max_score": 5,
+                "scoring_type": "direct",
+                "maturity_mapping": {
+                  "1": "reactive",
+                  "2": "developing",
+                  "3": "defined",
+                  "4": "advanced",
+                  "5": "optimized"
+                }
+              }
+            },
+            {
+              "id": "operations_007",
+              "text": "What qualification framework do you use?",
+              "order": 7,
+              "options": [
+                {
+                  "label": "None, qualify based on interest",
+                  "value": 1,
+                  "maturity_level": "reactive"
+                },
+                {
+                  "label": "Basic budget and timeline questions",
+                  "value": 2,
+                  "maturity_level": "developing"
+                },
+                {
+                  "label": "BANT adapted for EaaS",
+                  "value": 3,
+                  "maturity_level": "defined"
+                },
+                {
+                  "label": "MEDDPICC with energy-specific criteria",
+                  "value": 4,
+                  "maturity_level": "advanced"
+                },
+                {
+                  "label": "AI-enhanced framework with predictive fit scoring",
+                  "value": 5,
+                  "maturity_level": "optimized"
+                }
+              ],
+              "required": true,
+              "subcategory": "Sales Process",
+              "question_type": "single_select",
+              "scoring_criteria": {
+                "max_score": 5,
+                "scoring_type": "direct",
+                "maturity_mapping": {
+                  "1": "reactive",
+                  "2": "developing",
+                  "3": "defined",
+                  "4": "advanced",
+                  "5": "optimized"
+                }
+              }
+            },
+            {
+              "id": "operations_008",
+              "text": "What's your average sales cycle?",
+              "order": 8,
+              "options": [
+                {
+                  "label": "Highly variable (6-24 months)",
+                  "value": 1,
+                  "maturity_level": "reactive"
+                },
+                {
+                  "label": "12-18 months typical",
+                  "value": 2,
+                  "maturity_level": "developing"
+                },
+                {
+                  "label": "9-12 months",
+                  "value": 3,
+                  "maturity_level": "defined"
+                },
+                {
+                  "label": "6-9 months",
+                  "value": 4,
+                  "maturity_level": "advanced"
+                },
+                {
+                  "label": "AI-accelerated to under 6 months",
+                  "value": 5,
+                  "maturity_level": "optimized"
+                }
+              ],
+              "required": true,
+              "subcategory": "Sales Process",
+              "question_type": "single_select",
+              "scoring_criteria": {
+                "max_score": 5,
+                "scoring_type": "direct",
+                "maturity_mapping": {
+                  "1": "reactive",
+                  "2": "developing",
+                  "3": "defined",
+                  "4": "advanced",
+                  "5": "optimized"
+                }
+              }
+            },
+            {
+              "id": "operations_009",
+              "text": "How accurate are your forecasts?",
+              "order": 9,
+              "options": [
+                {
+                  "label": "Under 50% accuracy on quarterly forecast",
+                  "value": 1,
+                  "maturity_level": "reactive"
+                },
+                {
+                  "label": "50-60%",
+                  "value": 2,
+                  "maturity_level": "developing"
+                },
+                {
+                  "label": "60-70%",
+                  "value": 3,
+                  "maturity_level": "defined"
+                },
+                {
+                  "label": "70-80%",
+                  "value": 4,
+                  "maturity_level": "advanced"
+                },
+                {
+                  "label": "80%+ with AI incorporating project complexity",
+                  "value": 5,
+                  "maturity_level": "optimized"
+                }
+              ],
+              "required": true,
+              "subcategory": "Pipeline Management",
+              "question_type": "single_select",
+              "scoring_criteria": {
+                "max_score": 5,
+                "scoring_type": "direct",
+                "maturity_mapping": {
+                  "1": "reactive",
+                  "2": "developing",
+                  "3": "defined",
+                  "4": "advanced",
+                  "5": "optimized"
+                }
+              }
+            },
+            {
+              "id": "operations_010",
+              "text": "How often do you review pipeline?",
+              "order": 10,
+              "options": [
+                {
+                  "label": "Monthly or less frequently",
+                  "value": 1,
+                  "maturity_level": "reactive"
+                },
+                {
+                  "label": "Bi-weekly pipeline reviews",
+                  "value": 2,
+                  "maturity_level": "developing"
+                },
+                {
+                  "label": "Weekly deal reviews",
+                  "value": 3,
+                  "maturity_level": "defined"
+                },
+                {
+                  "label": "Daily pipeline monitoring",
+                  "value": 4,
+                  "maturity_level": "advanced"
+                },
+                {
+                  "label": "Real-time AI monitoring with alerts",
+                  "value": 5,
+                  "maturity_level": "optimized"
+                }
+              ],
+              "required": true,
+              "subcategory": "Pipeline Management",
+              "question_type": "single_select",
+              "scoring_criteria": {
+                "max_score": 5,
+                "scoring_type": "direct",
+                "maturity_mapping": {
+                  "1": "reactive",
+                  "2": "developing",
+                  "3": "defined",
+                  "4": "advanced",
+                  "5": "optimized"
+                }
+              }
+            },
+            {
+              "id": "operations_011",
+              "text": "How smooth are team handoffs?",
+              "order": 11,
+              "options": [
+                {
+                  "label": "Major friction between sales, engineering, and operations",
+                  "value": 1,
+                  "maturity_level": "reactive"
+                },
+                {
+                  "label": "Some issues with information transfer",
+                  "value": 2,
+                  "maturity_level": "developing"
+                },
+                {
+                  "label": "Defined process for sales-to-implementation handoff",
+                  "value": 3,
+                  "maturity_level": "defined"
+                },
+                {
+                  "label": "Automated handoffs with complete data transfer",
+                  "value": 4,
+                  "maturity_level": "advanced"
+                },
+                {
+                  "label": "AI-orchestrated transitions across teams",
+                  "value": 5,
+                  "maturity_level": "optimized"
+                }
+              ],
+              "required": true,
+              "subcategory": "Handoffs & Alignment",
+              "question_type": "single_select",
+              "scoring_criteria": {
+                "max_score": 5,
+                "scoring_type": "direct",
+                "maturity_mapping": {
+                  "1": "reactive",
+                  "2": "developing",
+                  "3": "defined",
+                  "4": "advanced",
+                  "5": "optimized"
+                }
+              }
+            },
+            {
+              "id": "operations_012",
+              "text": "What's your implementation time?",
+              "order": 12,
+              "options": [
+                {
+                  "label": "Highly variable, often delayed",
+                  "value": 1,
+                  "maturity_level": "reactive"
+                },
+                {
+                  "label": "Often delayed from original timeline",
+                  "value": 2,
+                  "maturity_level": "developing"
+                },
+                {
+                  "label": "Usually on time within 10%",
+                  "value": 3,
+                  "maturity_level": "defined"
+                },
+                {
+                  "label": "Consistently on schedule",
+                  "value": 4,
+                  "maturity_level": "advanced"
+                },
+                {
+                  "label": "AI-optimized delivery with predictive scheduling",
+                  "value": 5,
+                  "maturity_level": "optimized"
+                }
+              ],
+              "required": true,
+              "subcategory": "Handoffs & Alignment",
+              "question_type": "single_select",
+              "scoring_criteria": {
+                "max_score": 5,
+                "scoring_type": "direct",
+                "maturity_mapping": {
+                  "1": "reactive",
+                  "2": "developing",
+                  "3": "defined",
+                  "4": "advanced",
+                  "5": "optimized"
+                }
+              }
+            },
+            {
+              "id": "operations_013",
+              "text": "How do you identify bottlenecks?",
+              "order": 13,
+              "options": [
+                {
+                  "label": "When projects fail or customers complain",
+                  "value": 1,
+                  "maturity_level": "reactive"
+                },
+                {
+                  "label": "Periodic review of problem projects",
+                  "value": 2,
+                  "maturity_level": "developing"
+                },
+                {
+                  "label": "Regular analysis of stage conversion rates",
+                  "value": 3,
+                  "maturity_level": "defined"
+                },
+                {
+                  "label": "Proactive monitoring of leading indicators",
+                  "value": 4,
+                  "maturity_level": "advanced"
+                },
+                {
+                  "label": "AI prediction of bottlenecks before they occur",
+                  "value": 5,
+                  "maturity_level": "optimized"
+                }
+              ],
+              "required": true,
+              "subcategory": "Process Optimization",
+              "question_type": "single_select",
+              "scoring_criteria": {
+                "max_score": 5,
+                "scoring_type": "direct",
+                "maturity_mapping": {
+                  "1": "reactive",
+                  "2": "developing",
+                  "3": "defined",
+                  "4": "advanced",
+                  "5": "optimized"
+                }
+              }
+            },
+            {
+              "id": "operations_014",
+              "text": "What's your process improvement cycle?",
+              "order": 14,
+              "options": [
+                {
+                  "label": "Ad hoc only when major issues arise",
+                  "value": 1,
+                  "maturity_level": "reactive"
+                },
+                {
+                  "label": "Annual process review",
+                  "value": 2,
+                  "maturity_level": "developing"
+                },
+                {
+                  "label": "Quarterly optimization reviews",
+                  "value": 3,
+                  "maturity_level": "defined"
+                },
+                {
+                  "label": "Monthly continuous improvement",
+                  "value": 4,
+                  "maturity_level": "advanced"
+                },
+                {
+                  "label": "Continuous AI-driven optimization",
+                  "value": 5,
+                  "maturity_level": "optimized"
+                }
+              ],
+              "required": true,
+              "subcategory": "Process Optimization",
+              "question_type": "single_select",
+              "scoring_criteria": {
+                "max_score": 5,
+                "scoring_type": "direct",
+                "maturity_mapping": {
+                  "1": "reactive",
+                  "2": "developing",
+                  "3": "defined",
+                  "4": "advanced",
+                  "5": "optimized"
+                }
+              }
+            },
+            {
+              "id": "operations_015",
+              "text": "How do you manage renewals?",
+              "order": 15,
+              "options": [
+                {
+                  "label": "Reactive, wait for contract end date",
+                  "value": 1,
+                  "maturity_level": "reactive"
+                },
+                {
+                  "label": "90-day notice before renewal",
+                  "value": 2,
+                  "maturity_level": "developing"
+                },
+                {
+                  "label": "Proactive outreach 6 months before",
+                  "value": 3,
+                  "maturity_level": "defined"
+                },
+                {
+                  "label": "Health scoring driving renewal strategy",
+                  "value": 4,
+                  "maturity_level": "advanced"
+                },
+                {
+                  "label": "AI renewal prediction with early intervention",
+                  "value": 5,
+                  "maturity_level": "optimized"
+                }
+              ],
+              "required": true,
+              "subcategory": "Customer Success Operations",
+              "question_type": "single_select",
+              "scoring_criteria": {
+                "max_score": 5,
+                "scoring_type": "direct",
+                "maturity_mapping": {
+                  "1": "reactive",
+                  "2": "developing",
+                  "3": "defined",
+                  "4": "advanced",
+                  "5": "optimized"
+                }
+              }
+            },
+            {
+              "id": "operations_016",
+              "text": "What's your gross renewal rate?",
+              "order": 16,
+              "options": [
+                {
+                  "label": "Under 75% (high churn)",
+                  "value": 1,
+                  "maturity_level": "reactive"
+                },
+                {
+                  "label": "75-85%",
+                  "value": 2,
+                  "maturity_level": "developing"
+                },
+                {
+                  "label": "85-92%",
+                  "value": 3,
+                  "maturity_level": "defined"
+                },
+                {
+                  "label": "92-96%",
+                  "value": 4,
+                  "maturity_level": "advanced"
+                },
+                {
+                  "label": "96%+ with AI-driven retention",
+                  "value": 5,
+                  "maturity_level": "optimized"
+                }
+              ],
+              "required": true,
+              "subcategory": "Customer Success Operations",
+              "question_type": "single_select",
+              "scoring_criteria": {
+                "max_score": 5,
+                "scoring_type": "direct",
+                "maturity_mapping": {
+                  "1": "reactive",
+                  "2": "developing",
+                  "3": "defined",
+                  "4": "advanced",
+                  "5": "optimized"
+                }
+              }
+            },
+            {
+              "id": "operations_017",
+              "text": "How do you collect customer feedback?",
+              "order": 17,
+              "options": [
+                {
+                  "label": "Ad hoc when issues arise",
+                  "value": 1,
+                  "maturity_level": "reactive"
+                },
+                {
+                  "label": "Annual satisfaction surveys",
+                  "value": 2,
+                  "maturity_level": "developing"
+                },
+                {
+                  "label": "Regular surveys plus M&V reviews",
+                  "value": 3,
+                  "maturity_level": "defined"
+                },
+                {
+                  "label": "Multi-channel feedback with action tracking",
+                  "value": 4,
+                  "maturity_level": "advanced"
+                },
+                {
+                  "label": "Real-time AI monitoring of satisfaction signals",
+                  "value": 5,
+                  "maturity_level": "optimized"
+                }
+              ],
+              "required": true,
+              "subcategory": "Customer Experience & Feedback",
+              "question_type": "single_select",
+              "scoring_criteria": {
+                "max_score": 5,
+                "scoring_type": "direct",
+                "maturity_mapping": {
+                  "1": "reactive",
+                  "2": "developing",
+                  "3": "defined",
+                  "4": "advanced",
+                  "5": "optimized"
+                }
+              }
+            },
+            {
+              "id": "operations_018",
+              "text": "What's your Net Promoter Score (NPS)?",
+              "order": 18,
+              "options": [
+                {
+                  "label": "Under 10 or not measured",
+                  "value": 1,
+                  "maturity_level": "reactive"
+                },
+                {
+                  "label": "10-30",
+                  "value": 2,
+                  "maturity_level": "developing"
+                },
+                {
+                  "label": "30-50",
+                  "value": 3,
+                  "maturity_level": "defined"
+                },
+                {
+                  "label": "50-65",
+                  "value": 4,
+                  "maturity_level": "advanced"
+                },
+                {
+                  "label": "65+ with predictive insights",
+                  "value": 5,
+                  "maturity_level": "optimized"
+                }
+              ],
+              "required": true,
+              "subcategory": "Customer Experience & Feedback",
+              "question_type": "single_select",
+              "scoring_criteria": {
+                "max_score": 5,
+                "scoring_type": "direct",
+                "maturity_mapping": {
+                  "1": "reactive",
+                  "2": "developing",
+                  "3": "defined",
+                  "4": "advanced",
+                  "5": "optimized"
+                }
+              }
+            },
+            {
+              "id": "operations_019",
+              "text": "What's your revenue per operations FTE?",
+              "order": 19,
+              "options": [
+                {
+                  "label": "Under $3M per FTE",
+                  "value": 1,
+                  "maturity_level": "reactive"
+                },
+                {
+                  "label": "$3-5M",
+                  "value": 2,
+                  "maturity_level": "developing"
+                },
+                {
+                  "label": "$5-8M",
+                  "value": 3,
+                  "maturity_level": "defined"
+                },
+                {
+                  "label": "$8-12M",
+                  "value": 4,
+                  "maturity_level": "advanced"
+                },
+                {
+                  "label": "$12M+ with AI automation",
+                  "value": 5,
+                  "maturity_level": "optimized"
+                }
+              ],
+              "required": true,
+              "subcategory": "Operational Efficiency",
+              "question_type": "single_select",
+              "scoring_criteria": {
+                "max_score": 5,
+                "scoring_type": "direct",
+                "maturity_mapping": {
+                  "1": "reactive",
+                  "2": "developing",
+                  "3": "defined",
+                  "4": "advanced",
+                  "5": "optimized"
+                }
+              }
+            },
+            {
+              "id": "operations_020",
+              "text": "How automated are routine tasks?",
+              "order": 20,
+              "options": [
+                {
+                  "label": "All manual (proposals, reporting, scheduling)",
+                  "value": 1,
+                  "maturity_level": "reactive"
+                },
+                {
+                  "label": "Some templates for common documents",
+                  "value": 2,
+                  "maturity_level": "developing"
+                },
+                {
+                  "label": "Basic automation of repetitive tasks",
+                  "value": 3,
+                  "maturity_level": "defined"
+                },
+                {
+                  "label": "Advanced automation across sales and operations",
+                  "value": 4,
+                  "maturity_level": "advanced"
+                },
+                {
+                  "label": "AI-driven automation of complex workflows",
+                  "value": 5,
+                  "maturity_level": "optimized"
+                }
+              ],
+              "required": true,
+              "subcategory": "Operational Efficiency",
+              "question_type": "single_select",
+              "scoring_criteria": {
+                "max_score": 5,
+                "scoring_type": "direct",
+                "maturity_mapping": {
+                  "1": "reactive",
+                  "2": "developing",
+                  "3": "defined",
+                  "4": "advanced",
+                  "5": "optimized"
+                }
+              }
+            },
+            {
+              "id": "operations_021",
+              "text": "How do you identify expansion opportunities?",
+              "order": 21,
+              "options": [
+                {
+                  "label": "Reactive only when customer asks",
+                  "value": 1,
+                  "maturity_level": "reactive"
+                },
+                {
+                  "label": "Account reviews at contract milestones",
+                  "value": 2,
+                  "maturity_level": "developing"
+                },
+                {
+                  "label": "Energy monitoring identifying additional savings",
+                  "value": 3,
+                  "maturity_level": "defined"
+                },
+                {
+                  "label": "Predictive scoring for facility expansion",
+                  "value": 4,
+                  "maturity_level": "advanced"
+                },
+                {
+                  "label": "AI opportunity detection across all accounts",
+                  "value": 5,
+                  "maturity_level": "optimized"
+                }
+              ],
+              "required": true,
+              "subcategory": "Customer Success Expansion",
+              "question_type": "single_select",
+              "scoring_criteria": {
+                "max_score": 5,
+                "scoring_type": "direct",
+                "maturity_mapping": {
+                  "1": "reactive",
+                  "2": "developing",
+                  "3": "defined",
+                  "4": "advanced",
+                  "5": "optimized"
+                }
+              }
+            },
+            {
+              "id": "operations_022",
+              "text": "What's your net revenue retention rate?",
+              "order": 22,
+              "options": [
+                {
+                  "label": "Under 85%",
+                  "value": 1,
+                  "maturity_level": "reactive"
+                },
+                {
+                  "label": "85-95%",
+                  "value": 2,
+                  "maturity_level": "developing"
+                },
+                {
+                  "label": "95-105%",
+                  "value": 3,
+                  "maturity_level": "defined"
+                },
+                {
+                  "label": "105-115%",
+                  "value": 4,
+                  "maturity_level": "advanced"
+                },
+                {
+                  "label": "115%+ with AI optimization",
+                  "value": 5,
+                  "maturity_level": "optimized"
+                }
+              ],
+              "required": true,
+              "subcategory": "Customer Success Expansion",
+              "question_type": "single_select",
+              "scoring_criteria": {
+                "max_score": 5,
+                "scoring_type": "direct",
+                "maturity_mapping": {
+                  "1": "reactive",
+                  "2": "developing",
+                  "3": "defined",
+                  "4": "advanced",
+                  "5": "optimized"
+                }
+              }
+            },
+            {
+              "id": "operations_023",
+              "text": "How do you measure operational efficiency?",
+              "order": 23,
+              "options": [
+                {
+                  "label": "Don't measure operations efficiency",
+                  "value": 1,
+                  "maturity_level": "reactive"
+                },
+                {
+                  "label": "Basic cost and time metrics",
+                  "value": 2,
+                  "maturity_level": "developing"
+                },
+                {
+                  "label": "Comprehensive KPIs across processes",
+                  "value": 3,
+                  "maturity_level": "defined"
+                },
+                {
+                  "label": "Real-time dashboards with alerts",
+                  "value": 4,
+                  "maturity_level": "advanced"
+                },
+                {
+                  "label": "AI optimization scores with recommendations",
+                  "value": 5,
+                  "maturity_level": "optimized"
+                }
+              ],
+              "required": true,
+              "subcategory": "Measurement & Reporting",
+              "question_type": "single_select",
+              "scoring_criteria": {
+                "max_score": 5,
+                "scoring_type": "direct",
+                "maturity_mapping": {
+                  "1": "reactive",
+                  "2": "developing",
+                  "3": "defined",
+                  "4": "advanced",
+                  "5": "optimized"
+                }
+              }
+            },
+            {
+              "id": "operations_024",
+              "text": "What's your operational maturity score?",
+              "order": 24,
+              "options": [
+                {
+                  "label": "Reactive/chaotic operations",
+                  "value": 1,
+                  "maturity_level": "reactive"
+                },
+                {
+                  "label": "Developing with inconsistent processes",
+                  "value": 2,
+                  "maturity_level": "developing"
+                },
+                {
+                  "label": "Defined with documented procedures",
+                  "value": 3,
+                  "maturity_level": "defined"
+                },
+                {
+                  "label": "Optimized with continuous improvement",
+                  "value": 4,
+                  "maturity_level": "advanced"
+                },
+                {
+                  "label": "AI-transformed operations",
+                  "value": 5,
+                  "maturity_level": "optimized"
+                }
+              ],
+              "required": true,
+              "subcategory": "Measurement & Reporting",
+              "question_type": "single_select",
+              "scoring_criteria": {
+                "max_score": 5,
+                "scoring_type": "direct",
+                "maturity_mapping": {
+                  "1": "reactive",
+                  "2": "developing",
+                  "3": "defined",
+                  "4": "advanced",
+                  "5": "optimized"
+                }
+              }
+            }
+          ],
+          "questionCount": 24,
+          "assessmentId": "f853e395-ad9d-4352-87d0-13be60460e98",
+          "assessmentVersionId": "bd7f73cd-776b-46c0-bed9-8e89c14074ac",
+          "organizationId": "9ceb3e83-a7be-4d68-9eb9-a26692404f14",
+          "companyProfileId": "f3c5fbc8-a019-4124-ab61-772e34da1bea",
+          "companyName": "Redaptive",
+          "companyDomain": "ymail.com",
+          "classification": {
+            "industry_primary": "B2B Energy Efficiency - Energy-as-a-Service (EaaS)",
+            "industry_vertical": "Commercial & Industrial Energy Efficiency (commercial real estate, manufacturing, municipal, healthcare, data centers)",
+            "service_model": "Managed Energy Services / Energy-as-a-Service (includes retrofit project delivery, performance guarantees, financing and analytics platform)",
+            "company_size": "scaleup",
+            "employee_count_range": "51-200",
+            "estimated_arr_range": "$10M-$50M",
+            "gtm_model": "Hybrid",
+            "target_customer": "Mid-Market and Enterprise",
+            "confidence_score": 0.55,
+            "classification_notes": "Provided website content is for Yahoo Mail and does not describe Redaptive. Classification is based on external knowledge: Redaptive delivers energy-efficiency retrofits and ongoing managed services under an Energy-as-a-Service model, combining project implementation, financing, IoT metering and analytics with guaranteed savings. GTM is primarily sales-led to facility owners/operators with partner channels (contractors, ESCOs, OEMs). Employee count and ARR estimated from company maturity and market footprint; confidence moderate due to lack of direct site data in the input."
+          },
+          "assessmentType": "gtm_readiness",
+          "totalDimensions": 6,
+          "playbookMetadata": {
+            "name": "GTM AI Readiness Assessment - B2B Energy Efficiency (EaaS)",
+            "version": "1.0",
+            "description": "Comprehensive 6-dimension assessment for B2B Energy-as-a-Service GTM AI readiness, tailored for commercial & industrial energy efficiency providers serving commercial real estate, manufacturing, municipal, healthcare, and data center markets",
+            "total_weight": 1,
+            "total_questions": 140,
+            "estimated_duration_minutes": 45,
+            "industry": "B2B Energy Efficiency - Energy-as-a-Service (EaaS)",
+            "vertical": "Commercial & Industrial Energy Efficiency"
+          },
+          "scoringModel": {
+            "maturity_thresholds": {
+              "defined": {
+                "max": 60,
+                "min": 41,
+                "label": "Defined"
+              },
+              "advanced": {
+                "max": 80,
+                "min": 61,
+                "label": "Advanced"
+              },
+              "reactive": {
+                "max": 20,
+                "min": 0,
+                "label": "Reactive"
+              },
+              "optimized": {
+                "max": 100,
+                "min": 81,
+                "label": "AI-Optimized"
+              },
+              "developing": {
+                "max": 40,
+                "min": 21,
+                "label": "Developing"
+              }
+            },
+            "overall_calculation": "weighted_sum",
+            "max_score_per_question": 5
+          }
+        },
+        "pairedItem": {
+          "item": 0
+        }
+      }
+    ]
+  },
+  "versionId": "204d7651-40e2-4825-a32a-aa2650efaabe",
+  "activeVersionId": "204d7651-40e2-4825-a32a-aa2650efaabe",
+  "versionCounter": 24,
+  "triggerCount": 0,
+  "shared": [
+    {
+      "updatedAt": "2026-02-05T13:41:08.663Z",
+      "createdAt": "2026-02-05T13:41:08.663Z",
+      "role": "workflow:owner",
+      "workflowId": "XltKceTO8rGqvP4j",
+      "projectId": "DVYglwqlfMJuM9zT",
+      "project": {
+        "updatedAt": "2025-10-05T18:15:43.115Z",
+        "createdAt": "2025-08-13T20:40:27.041Z",
+        "id": "DVYglwqlfMJuM9zT",
+        "name": "Laksh Agrawal <laksh@supastack.ai>",
+        "type": "personal",
+        "icon": null,
+        "description": null,
+        "creatorId": "ec164287-6cde-4606-b0c4-9d4cd30c3b98",
+        "projectRelations": [
+          {
+            "updatedAt": "2025-08-13T20:40:27.041Z",
+            "createdAt": "2025-08-13T20:40:27.041Z",
+            "userId": "ec164287-6cde-4606-b0c4-9d4cd30c3b98",
+            "projectId": "DVYglwqlfMJuM9zT",
+            "user": {
+              "updatedAt": "2026-02-21T15:10:03.000Z",
+              "createdAt": "2025-08-13T20:40:26.693Z",
+              "id": "ec164287-6cde-4606-b0c4-9d4cd30c3b98",
+              "email": "laksh@supastack.ai",
+              "firstName": "Laksh",
+              "lastName": "Agrawal",
+              "personalizationAnswers": {
+                "version": "v4",
+                "personalization_survey_submitted_at": "2025-08-13T20:49:45.872Z",
+                "personalization_survey_n8n_version": "1.106.3",
+                "companyIndustryExtended": [],
+                "companyType": "other"
+              },
+              "settings": {
+                "userActivated": true,
+                "easyAIWorkflowOnboarded": true,
+                "firstSuccessfulWorkflowId": "omMzGXpD7rLUfAFm",
+                "userActivatedAt": 1755124587490,
+                "npsSurvey": {
+                  "responded": true,
+                  "lastShownAt": 1759741367883
+                }
+              },
+              "disabled": false,
+              "mfaEnabled": false,
+              "lastActiveAt": "2026-02-20",
+              "isPending": false
+            }
+          }
+        ]
+      }
+    }
+  ],
+  "tags": [],
+  "activeVersion": {
+    "updatedAt": "2026-02-12T20:12:26.000Z",
+    "createdAt": "2026-02-12T20:12:23.205Z",
+    "versionId": "204d7651-40e2-4825-a32a-aa2650efaabe",
+    "workflowId": "XltKceTO8rGqvP4j",
+    "nodes": [
+      {
+        "parameters": {
+          "inputSource": "passthrough"
+        },
+        "type": "n8n-nodes-base.executeWorkflowTrigger",
+        "typeVersion": 1.1,
+        "position": [
+          -2208,
+          880
+        ],
+        "id": "5926a3c2-0d2d-44af-914d-b827ebefa3eb",
+        "name": "Dimension Input Trigger"
+      },
+      {
+        "parameters": {
+          "model": "openai/gpt-5-mini",
+          "options": {}
+        },
+        "type": "@n8n/n8n-nodes-langchain.lmChatOpenRouter",
+        "typeVersion": 1,
+        "position": [
+          -1984,
+          1088
+        ],
+        "id": "e196c6b6-d79e-4809-a0d1-8d25beafe4f7",
+        "name": "Sonnet 4 - Query Gen",
+        "credentials": {
+          "openRouterApi": {
+            "id": "DPnbXJEN5OpXBJeM",
+            "name": "OpenRouter account"
+          }
+        }
+      },
+      {
+        "parameters": {
+          "promptType": "define",
+          "text": "=You are an expert research strategist. Generate targeted search queries to assess **{{ $json.companyName }}**'s maturity in the **{{ $json.dimensionName }}** dimension.\n\n## COMPANY CONTEXT\n- **Company:** {{ $json.companyName }}\n- **Domain:** {{ $json.companyDomain }}\n- **Industry:** {{ $json.classification.industry_primary }}\n- **Vertical:** {{ $json.classification.industry_vertical }}\n- **Size:** {{ $json.classification.employee_count_range }} employees\n- **ARR Range:** {{ $json.classification.estimated_arr_range }}\n- **Service Model:** {{ $json.classification.service_model }}\n- **Target Customer:** {{ $json.classification.target_customer }}\n\n## DIMENSION TO ASSESS\n- **Dimension:** {{ $json.dimensionName }} ({{ $json.dimensionKey }})\n- **Weight:** {{ $json.dimensionWeight }} ({{ Math.round($json.dimensionWeight * 100) }}%)\n- **Assessment Type:** {{ $json.assessmentType }}\n\n## QUESTIONS TO FIND EVIDENCE FOR\n{{ JSON.stringify($json.dimensionQuestions.slice(0, 10), null, 2) }}\n\n## MATURITY FRAMEWORK\nThis assessment uses CRAWL/WALK/RUN maturity levels:\n- **CRAWL (1-2):** Basic/reactive, manual processes, no formal structure\n- **WALK (3-4):** Documented processes, some automation, defined KPIs\n- **RUN (5):** AI-optimized, predictive, fully automated, industry-leading\n\n## YOUR TASK\nGenerate 10-15 targeted search queries that will help find PUBLIC evidence about this company's capabilities in {{ $json.dimensionName }}.\n\n### Query Types to Include:\n1. **Company-specific:** \"{{ $json.companyName }} [topic]\" \n2. **Domain-specific:** \"site:{{ $json.companyDomain }} [topic]\"\n3. **Industry benchmarks:** \"{{ $json.classification.industry_vertical }} [metric] benchmark\"\n4. **Job postings:** \"{{ $json.companyName }} careers [relevant role]\"\n5. **News/PR:** \"{{ $json.companyName }} partnership announcement\"\n6. **LinkedIn:** \"{{ $json.companyName }} [leadership role]\"\n7. **Reviews/ratings:** \"{{ $json.companyName }} reviews [platform]\"\n\n### Output Format (JSON only, no markdown):\n{\n  \"search_queries\": [\n    {\n      \"query\": \"exact search string\",\n      \"intent\": \"what evidence we're looking for\",\n      \"question_alignment\": \"which question ID(s) this helps answer\",\n      \"priority\": \"high|medium|low\",\n      \"expected_evidence\": \"type of information expected\"\n    }\n  ]\n}\n\n### Requirements:\n- Generate 10-15 queries total\n- At least 5 high priority queries\n- Cover multiple subcategories from the questions\n- Use actual company name and domain\n- Focus on publicly findable information\n- Include industry-specific terminology for {{ $json.classification.industry_primary }}\n\nReturn ONLY valid JSON, no explanation or markdown.",
+          "options": {
+            "systemMessage": "You are a research query specialist. Return only valid JSON with no markdown formatting or explanation."
+          }
+        },
+        "type": "@n8n/n8n-nodes-langchain.agent",
+        "typeVersion": 2.2,
+        "position": [
+          -1984,
+          880
+        ],
+        "id": "1fdb6180-62b3-4f73-bda2-b0730c8c631e",
+        "name": "Search Query Generator"
+      },
+      {
+        "parameters": {
+          "jsCode": "// Parse search queries from AI output\nconst input = $input.first().json;\nconst outputString = input.output;\n\n// Try to parse JSON directly or extract from markdown\nlet searchData;\ntry {\n  // First try direct JSON parse\n  searchData = JSON.parse(outputString);\n} catch (e) {\n  // Try extracting from markdown code block\n  const jsonMatch = outputString.match(/```(?:json)?\\n?([\\s\\S]*?)\\n?```/);\n  if (jsonMatch) {\n    searchData = JSON.parse(jsonMatch[1]);\n  } else {\n    // Try finding JSON object directly\n    const objectMatch = outputString.match(/\\{[\\s\\S]*\\}/);\n    if (objectMatch) {\n      searchData = JSON.parse(objectMatch[0]);\n    } else {\n      throw new Error('Could not find JSON in output');\n    }\n  }\n}\n\nconst searchQueries = searchData.search_queries;\nif (!searchQueries || !Array.isArray(searchQueries)) {\n  throw new Error('No search_queries array found');\n}\n\n// Get original dimension data from trigger\nconst dimensionData = $('Dimension Input Trigger').first().json;\n\n// Return each query as separate item\nreturn searchQueries.map((query, index) => ({\n  json: {\n    query: query.query,\n    intent: query.intent,\n    question_alignment: query.question_alignment,\n    priority: query.priority,\n    expected_evidence: query.expected_evidence,\n    query_index: index + 1,\n    total_queries: searchQueries.length,\n    // Pass through dimension context\n    dimensionKey: dimensionData.dimensionKey,\n    dimensionName: dimensionData.dimensionName,\n    companyName: dimensionData.companyName,\n    companyDomain: dimensionData.companyDomain\n  }\n}));"
+        },
+        "type": "n8n-nodes-base.code",
+        "typeVersion": 2,
+        "position": [
+          -1664,
+          880
+        ],
+        "id": "b68c799f-69fb-4ce4-b61a-b5ed0348fcfd",
+        "name": "Parse Search Queries"
+      },
+      {
+        "parameters": {
+          "batchSize": 5,
+          "options": {}
+        },
+        "type": "n8n-nodes-base.splitInBatches",
+        "typeVersion": 3,
+        "position": [
+          -1424,
+          880
+        ],
+        "id": "a01ca715-a4a9-4db6-9f60-b6029265ca9e",
+        "name": "Batch Queries"
+      },
+      {
+        "parameters": {
+          "amount": 1
+        },
+        "type": "n8n-nodes-base.wait",
+        "typeVersion": 1.1,
+        "position": [
+          -944,
+          1040
+        ],
+        "id": "0ef33024-eb00-4c61-8aff-66310d3af7bc",
+        "name": "Rate Limit Wait",
+        "webhookId": "733fbdd0-1957-41f0-8b0f-bc58ee84ac22"
+      },
+      {
+        "parameters": {
+          "jsCode": "// Aggregate all search results from the batch loop\nconst allResults = [];\nconst dimensionData = $('Dimension Input Trigger').first().json;\n\nfor (const item of $input.all()) {\n  // Check if this item has search results\n  if (item.json.results || item.json.answer) {\n    allResults.push({\n      query: item.json.query || 'unknown',\n      answer: item.json.answer || null,\n      results: item.json.results || [],\n      response_time: item.json.response_time || null\n    });\n  }\n}\n\n// Calculate search statistics\nconst totalResults = allResults.reduce((sum, r) => sum + (r.results?.length || 0), 0);\nconst queriesWithAnswers = allResults.filter(r => r.answer).length;\n\nreturn [{\n  json: {\n    // Search results summary\n    searchSummary: {\n      totalQueries: allResults.length,\n      totalResults: totalResults,\n      queriesWithAnswers: queriesWithAnswers,\n      timestamp: new Date().toISOString()\n    },\n    searchResults: allResults,\n    \n    // Pass through all dimension data for analysis\n    dimensionKey: dimensionData.dimensionKey,\n    dimensionName: dimensionData.dimensionName,\n    dimensionWeight: dimensionData.dimensionWeight,\n    dimensionOrder: dimensionData.dimensionOrder,\n    dimensionQuestions: dimensionData.dimensionQuestions,\n    questionCount: dimensionData.questionCount,\n    \n    // Assessment context\n    assessmentId: dimensionData.assessmentId,\n    assessmentVersionId: dimensionData.assessmentVersionId,\n    organizationId: dimensionData.organizationId,\n    companyProfileId: dimensionData.companyProfileId,\n    \n    // Company context\n    companyName: dimensionData.companyName,\n    companyDomain: dimensionData.companyDomain,\n    classification: dimensionData.classification,\n    assessmentType: dimensionData.assessmentType,\n    \n    // Playbook context\n    playbookMetadata: dimensionData.playbookMetadata,\n    scoringModel: dimensionData.scoringModel,\n    totalDimensions: dimensionData.totalDimensions\n  }\n}];"
+        },
+        "type": "n8n-nodes-base.code",
+        "typeVersion": 2,
+        "position": [
+          -1184,
+          720
+        ],
+        "id": "1379e32d-0d7d-43af-99f4-02b140e714a1",
+        "name": "Aggregate Search Results"
+      },
+      {
+        "parameters": {
+          "model": "anthropic/claude-sonnet-4.5",
+          "options": {}
+        },
+        "type": "@n8n/n8n-nodes-langchain.lmChatOpenRouter",
+        "typeVersion": 1,
+        "position": [
+          -928,
+          928
+        ],
+        "id": "b5cfa459-1c72-4fcc-9c40-1b0a963477f6",
+        "name": "Sonnet 4.5 - Analysis",
+        "credentials": {
+          "openRouterApi": {
+            "id": "DPnbXJEN5OpXBJeM",
+            "name": "OpenRouter account"
+          }
+        }
+      },
+      {
+        "parameters": {
+          "promptType": "define",
+          "text": "=You are an expert {{ $json.assessmentType }} analyst. Evaluate **{{ $json.companyName }}** against the **{{ $json.dimensionName }}** dimension using the search evidence provided.\n\n## COMPANY PROFILE\n- **Company:** {{ $json.companyName }}\n- **Domain:** {{ $json.companyDomain }}\n- **Industry:** {{ $json.classification.industry_primary }}\n- **Vertical:** {{ $json.classification.industry_vertical }}\n- **Size:** {{ $json.classification.employee_count_range }} employees\n- **ARR Range:** {{ $json.classification.estimated_arr_range }}\n- **Service Model:** {{ $json.classification.service_model }}\n- **Target Customer:** {{ $json.classification.target_customer }}\n\n## DIMENSION BEING ASSESSED\n- **Dimension:** {{ $json.dimensionName }}\n- **Key:** {{ $json.dimensionKey }}\n- **Weight:** {{ $json.dimensionWeight }} ({{ Math.round($json.dimensionWeight * 100) }}%)\n- **Question Count:** {{ $json.questionCount }}\n\n## SCORING MODEL\n{{ JSON.stringify($json.scoringModel, null, 2) }}\n\n## DIMENSION QUESTIONS TO EVALUATE\n{{ JSON.stringify($json.dimensionQuestions, null, 2) }}\n\n## SEARCH EVIDENCE COLLECTED\n**Search Summary:** {{ $json.searchSummary.totalQueries }} queries, {{ $json.searchSummary.totalResults }} results found\n\n**Search Results:**\n{{ JSON.stringify($json.searchResults, null, 2) }}\n\n---\n\n## YOUR ANALYSIS TASK\n\nAnalyze the company against this dimension using ONLY the evidence from search results. Be honest about data limitations.\n\n### Maturity Framework (CRAWL/WALK/RUN)\n- **CRAWL (Score 1-2, 0-40%):** Reactive, ad-hoc, no formal processes, manual operations\n- **WALK (Score 3-4, 41-70%):** Documented processes, some automation, defined KPIs, regular reviews\n- **RUN (Score 5, 71-100%):** AI-optimized, predictive analytics, fully automated, industry-leading\n\n### Confidence Scoring Guidelines\n- **verified (90-100%):** Multiple corroborating sources, specific metrics found\n- **validated (70-89%):** Good evidence from reliable sources\n- **informed_estimate (50-69%):** Some evidence, reasonable inferences (typical for webscan)\n- **low_confidence (30-49%):** Limited evidence, significant assumptions\n- **insufficient_data (0-29%):** Cannot make reliable assessment\n\n---\n\n## REQUIRED OUTPUT FORMAT (JSON ONLY)\n\n**CRITICAL JSON FORMATTING RULES:**\n- ALL string values must have internal double quotes escaped with backslash: \\\"\n- Example: \"quote\": \"The \\\"LinkedIn\\\" and \\\"Facebook\\\" presence shows digital engagement\"\n- Never write: \"quote\": \"The \"LinkedIn\" and \"Facebook\" presence\" (this breaks JSON)\n- If quoting text that contains quotes, always escape them: \\\"text\\\"\n- Test your JSON is valid before outputting\n```json\n{\n  \"raw_score\": <0-100 integer>,\n  \"maturity_level\": \"crawl|walk|run\",\n  \n  \"confidence_score\": <0-100 integer>,\n  \"confidence_category\": \"verified|validated|informed_estimate|low_confidence|insufficient_data\",\n  \"confidence_factors\": {\n    \"data_sources_found\": <number>,\n    \"data_points_extracted\": <number>,\n    \"assumptions_made\": <number>,\n    \"gaps_identified\": <number>\n  },\n  \"limitations\": [\"limitation 1\", \"limitation 2\"],\n  \"confidence_improvement_suggestions\": [\n    {\n      \"suggestion\": \"what would improve confidence\",\n      \"data_needed\": \"specific data required\",\n      \"potential_confidence_gain\": <5-20>\n    }\n  ],\n  \n  \"analysis_summary\": \"2-3 sentence executive summary of findings\",\n  \n  \"strengths\": [\n    {\n      \"title\": \"strength name\",\n      \"description\": \"detailed description\",\n      \"evidence\": \"specific evidence from search results - escape any quotes with backslash\"\n    }\n  ],\n  \n  \"gaps\": [\n    {\n      \"title\": \"gap name\",\n      \"description\": \"detailed description\",\n      \"impact\": \"business impact\",\n      \"priority\": \"critical|high|medium|low\"\n    }\n  ],\n  \n  \"quick_wins\": [\n    {\n      \"action\": \"specific action\",\n      \"timeline\": \"30|60|90 days\",\n      \"expected_impact\": \"measurable outcome\"\n    }\n  ],\n  \n  \"recommendations\": [\n    {\n      \"title\": \"recommendation name\",\n      \"description\": \"detailed description\",\n      \"effort\": \"low|medium|high\",\n      \"impact\": \"low|medium|high\",\n      \"timeline\": \"short|medium|long term\"\n    }\n  ],\n  \n  \"evidence_sources\": [\n    {\n      \"source_url\": \"URL if available\",\n      \"source_type\": \"website|news|job_posting|review|linkedin\",\n      \"relevance\": \"how this informed the assessment\",\n      \"quote\": \"key excerpt - ESCAPE ALL INTERNAL QUOTES with backslash before quote mark\"\n    }\n  ]\n}\n```\n\n### Critical Instructions:\n1. Base scores ONLY on evidence found - do not assume capabilities\n2. For webscan analysis, confidence typically maxes at 65% (informed_estimate)\n3. Be specific about what evidence supports each finding\n4. Identify clear gaps where no evidence was found\n5. Recommendations should be actionable and specific to this company\n6. **ESCAPE ALL DOUBLE QUOTES IN STRING VALUES:** Use \\\" for any quotes within text\n7. Return ONLY valid JSON inside markdown code block, no extra text\n8. Verify your JSON is valid before responding\n\nAnalyze {{ $json.companyName }}'s {{ $json.dimensionName }} maturity now.",
+          "options": {
+            "systemMessage": "You are an expert business analyst specializing in GTM and Partnership maturity assessments. Return only valid JSON output matching the exact schema specified. Be evidence-based and honest about limitations."
+          }
+        },
+        "type": "@n8n/n8n-nodes-langchain.agent",
+        "typeVersion": 2.2,
+        "position": [
+          -944,
+          720
+        ],
+        "id": "6af68654-9a65-4205-9ec9-d50ac175dec1",
+        "name": "Dimension Analysis Agent"
+      },
+      {
+        "parameters": {
+          "jsCode": "// Parse analysis output and prepare for Supabase insert\nconst input = $input.first().json;\nlet outputString = input.output;\nconst dimensionData = $('Aggregate Search Results').first().json;\n\n// Extract JSON from markdown code block\nconst jsonMatch = outputString.match(/```(?:json)?\\s*\\n([\\s\\S]*?)\\n```/);\nif (jsonMatch) {\n  outputString = jsonMatch[1].trim();\n}\n\n// Parse the cleaned JSON\nlet analysis;\ntry {\n  analysis = JSON.parse(outputString);\n} catch (e) {\n  console.log(`JSON Parse failed: ${e.message}. Falling back to default object.`);\n  analysis = {\n    raw_score: 0,\n    maturity_level: \"crawl\",\n    confidence_score: 0,\n    confidence_category: \"insufficient_data\",\n    analysis_summary: \"Error parsing AI analysis output. Raw output saved in full_analysis.\",\n    limitations: [\"JSON Parse Error from Model\"],\n    strengths: [],\n    gaps: [],\n    quick_wins: [],\n    recommendations: [],\n    evidence_sources: []\n  };\n}\n\n// Calculate weighted score\nconst weightedScore = (analysis.raw_score * dimensionData.dimensionWeight).toFixed(2);\n\n// Prepare the record for dimension_analyses table\nreturn [{\n  json: {\n    version_id: dimensionData.assessmentVersionId,\n    dimension_key: dimensionData.dimensionKey,\n    dimension_name: dimensionData.dimensionName,\n    dimension_weight: dimensionData.dimensionWeight,\n    analysis_type: 'webscan',\n    raw_score: analysis.raw_score || 0,\n    weighted_score: parseFloat(weightedScore) || 0,\n    maturity_level: analysis.maturity_level || 'crawl',\n    confidence_score: analysis.confidence_score || 0,\n    confidence_category: analysis.confidence_category || 'insufficient_data',\n    confidence_factors: analysis.confidence_factors || {},\n    limitations: analysis.limitations || [],\n    confidence_improvement_suggestions: analysis.confidence_improvement_suggestions || [],\n    analysis_summary: analysis.analysis_summary || \"No summary available\",\n    full_analysis: analysis,\n    strengths: analysis.strengths || [],\n    gaps: analysis.gaps || [],\n    quick_wins: analysis.quick_wins || [],\n    recommendations: analysis.recommendations || [],\n    evidence_sources: analysis.evidence_sources || [],\n    model_used: 'claude-sonnet-4-5-20250929',\n    started_at: new Date().toISOString(),\n    completed_at: new Date().toISOString(),\n    assessmentId: dimensionData.assessmentId,\n    organizationId: dimensionData.organizationId,\n    companyName: dimensionData.companyName\n  }\n}];"
+        },
+        "type": "n8n-nodes-base.code",
+        "typeVersion": 2,
+        "position": [
+          -624,
+          720
+        ],
+        "id": "fe94d679-555a-411c-9d53-7be73891a8cd",
+        "name": "Prepare for Supabase"
+      },
+      {
+        "parameters": {
+          "jsCode": "// Return success summary\nconst insertResult = $input.first().json;\nconst preparedData = $('Prepare for Supabase').first().json;\n\nreturn [{\n  json: {\n    success: true,\n    message: `Dimension analysis completed for ${preparedData.dimension_name}`,\n    summary: {\n      company: preparedData.companyName,\n      dimension: preparedData.dimension_name,\n      dimension_key: preparedData.dimension_key,\n      raw_score: preparedData.raw_score,\n      maturity_level: preparedData.maturity_level,\n      confidence_score: preparedData.confidence_score,\n      confidence_category: preparedData.confidence_category\n    },\n    assessment_version_id: preparedData.version_id,\n    organization_id: preparedData.organizationId,\n    completed_at: new Date().toISOString()\n  }\n}];"
+        },
+        "type": "n8n-nodes-base.code",
+        "typeVersion": 2,
+        "position": [
+          -224,
+          720
+        ],
+        "id": "9537969d-de97-4029-b82f-0fef0ec2ff06",
+        "name": "Return Success"
+      },
+      {
+        "parameters": {
+          "method": "POST",
+          "url": "https://api.tavily.com/search",
+          "sendHeaders": true,
+          "headerParameters": {
+            "parameters": [
+              {
+                "name": "Content-Type",
+                "value": "application/json"
+              }
+            ]
+          },
+          "sendBody": true,
+          "bodyParameters": {
+            "parameters": [
+              {
+                "name": "api_key",
+                "value": "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"
+              },
+              {
+                "name": "query",
+                "value": "={{ $json.query }}"
+              },
+              {
+                "name": "search_depth",
+                "value": "advanced"
+              },
+              {
+                "name": "max_results",
+                "value": "20"
+              },
+              {
+                "name": "include_answer",
+                "value": true
+              },
+              {
+                "name": "include_raw_content",
+                "value": false
+              }
+            ]
+          },
+          "options": {}
+        },
+        "id": "089d792e-26b1-4190-b2f2-5f0ed04ceb84",
+        "name": "Tavily Search",
+        "type": "n8n-nodes-base.httpRequest",
+        "position": [
+          -1136,
+          976
+        ],
+        "typeVersion": 3,
+        "executeOnce": false
+      },
+      {
+        "parameters": {
+          "tableId": "dimension_analyses",
+          "fieldsUi": {
+            "fieldValues": [
+              {
+                "fieldId": "assessment_id",
+                "fieldValue": "={{ $('Dimension Input Trigger').first().json.assessmentId }}"
+              },
+              {
+                "fieldId": "version_id",
+                "fieldValue": "={{ $json.version_id }}"
+              },
+              {
+                "fieldId": "dimension_key",
+                "fieldValue": "={{ $json.dimension_key }}"
+              },
+              {
+                "fieldId": "stage",
+                "fieldValue": "web_scan"
+              },
+              {
+                "fieldId": "iteration",
+                "fieldValue": "1"
+              },
+              {
+                "fieldId": "raw_score",
+                "fieldValue": "={{ $json.raw_score }}"
+              },
+              {
+                "fieldId": "confidence_score",
+                "fieldValue": "={{ $json.confidence_score }}"
+              },
+              {
+                "fieldId": "score_delta",
+                "fieldValue": "={{ {\"previous_raw_score\": null, \"raw_score_change\": 0, \"previous_confidence\": null, \"confidence_change\": 0} }}"
+              },
+              {
+                "fieldId": "full_analysis",
+                "fieldValue": "={{ $json.full_analysis }}"
+              },
+              {
+                "fieldId": "analysis_summary",
+                "fieldValue": "={{ $json.analysis_summary }}"
+              },
+              {
+                "fieldId": "dimension_name",
+                "fieldValue": "={{ $json.dimension_name }}"
+              }
+            ]
+          }
+        },
+        "type": "n8n-nodes-base.supabase",
+        "typeVersion": 1,
+        "position": [
+          -432,
+          720
+        ],
+        "id": "7dc660d1-0fbf-4b3a-8f82-c9e0023f61c8",
+        "name": "Insert Dimension Analysis",
+        "credentials": {
+          "supabaseApi": {
+            "id": "FTSugGkqwnuu6irz",
+            "name": "SupaStack"
+          }
+        }
+      },
+      {
+        "parameters": {
+          "operation": "getAll",
+          "tableId": "dimension_analyses",
+          "filters": {
+            "conditions": [
+              {
+                "keyName": "version_id",
+                "condition": "eq",
+                "keyValue": "={{ $json.version_id }}"
+              }
+            ]
+          }
+        },
+        "type": "n8n-nodes-base.supabase",
+        "typeVersion": 1,
+        "position": [
+          -176,
+          928
+        ],
+        "id": "29991e8e-96ca-4618-aad1-5e1e0866552c",
+        "name": "Count Completed",
+        "credentials": {
+          "supabaseApi": {
+            "id": "FTSugGkqwnuu6irz",
+            "name": "SupaStack"
+          }
+        }
+      },
+      {
+        "parameters": {
+          "jsCode": "return { count: $input.all().length };"
+        },
+        "type": "n8n-nodes-base.code",
+        "typeVersion": 2,
+        "position": [
+          96,
+          832
+        ],
+        "id": "b9100bd2-3915-48d0-bfe8-bd97af3ec695",
+        "name": "Aggregate Count"
+      },
+      {
+        "parameters": {
+          "conditions": {
+            "number": [
+              {
+                "value1": "={{ $json.count }}",
+                "operation": "equal",
+                "value2": "={{ $('Aggregate Search Results').first().json.totalDimensions }}"
+              }
+            ]
+          }
+        },
+        "type": "n8n-nodes-base.if",
+        "typeVersion": 1,
+        "position": [
+          400,
+          928
+        ],
+        "id": "320743aa-a237-43c1-9fb3-63f0acd48736",
+        "name": "Is Last Dimension"
+      },
+      {
+        "parameters": {
+          "method": "POST",
+          "url": "https://n8n.srv957266.hstgr.cloud/webhook/291c59b9-ea34-4068-bf04-36bb7b6a3fdd",
+          "sendHeaders": true,
+          "headerParameters": {
+            "parameters": [
+              {
+                "name": "Content-Type",
+                "value": "application/json"
+              }
+            ]
+          },
+          "sendBody": true,
+          "bodyParameters": {
+            "parameters": [
+              {
+                "name": "assessment_version_id",
+                "value": "={{ $('Aggregate Search Results').first().json.assessmentVersionId }}"
+              },
+              {
+                "name": "assessment_id",
+                "value": "={{ $('Aggregate Search Results').first().json.assessmentId }}"
+              },
+              {
+                "name": "organization_id",
+                "value": "={{ $('Aggregate Search Results').first().json.organizationId }}"
+              },
+              {
+                "name": "id",
+                "value": "={{ $('Aggregate Search Results').first().json.organizationId }}"
+              }
+            ]
+          },
+          "options": {}
+        },
+        "type": "n8n-nodes-base.httpRequest",
+        "typeVersion": 3,
+        "position": [
+          832,
+          928
+        ],
+        "id": "97764c3d-17f5-4fd0-8571-1c36f87ee0c8",
+        "name": "Trigger Report Gen"
+      }
+    ],
+    "connections": {
+      "Dimension Input Trigger": {
+        "main": [
+          [
+            {
+              "node": "Search Query Generator",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
+      },
+      "Sonnet 4 - Query Gen": {
+        "ai_languageModel": [
+          [
+            {
+              "node": "Search Query Generator",
+              "type": "ai_languageModel",
+              "index": 0
+            }
+          ]
+        ]
+      },
+      "Search Query Generator": {
+        "main": [
+          [
+            {
+              "node": "Parse Search Queries",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
+      },
+      "Parse Search Queries": {
+        "main": [
+          [
+            {
+              "node": "Batch Queries",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
+      },
+      "Batch Queries": {
+        "main": [
+          [
+            {
+              "node": "Aggregate Search Results",
+              "type": "main",
+              "index": 0
+            }
+          ],
+          [
+            {
+              "node": "Tavily Search",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
+      },
+      "Rate Limit Wait": {
+        "main": [
+          [
+            {
+              "node": "Batch Queries",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
+      },
+      "Aggregate Search Results": {
+        "main": [
+          [
+            {
+              "node": "Dimension Analysis Agent",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
+      },
+      "Sonnet 4.5 - Analysis": {
+        "ai_languageModel": [
+          [
+            {
+              "node": "Dimension Analysis Agent",
+              "type": "ai_languageModel",
+              "index": 0
+            }
+          ]
+        ]
+      },
+      "Dimension Analysis Agent": {
+        "main": [
+          [
+            {
+              "node": "Prepare for Supabase",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
+      },
+      "Prepare for Supabase": {
+        "main": [
+          [
+            {
+              "node": "Insert Dimension Analysis",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
+      },
+      "Tavily Search": {
+        "main": [
+          [
+            {
+              "node": "Rate Limit Wait",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
+      },
+      "Insert Dimension Analysis": {
+        "main": [
+          [
+            {
+              "node": "Return Success",
+              "type": "main",
+              "index": 0
+            },
+            {
+              "node": "Count Completed",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
+      },
+      "Count Completed": {
+        "main": [
+          [
+            {
+              "node": "Aggregate Count",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
+      },
+      "Aggregate Count": {
+        "main": [
+          [
+            {
+              "node": "Is Last Dimension",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
+      },
+      "Is Last Dimension": {
+        "main": [
+          [
+            {
+              "node": "Trigger Report Gen",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
+      }
+    },
+    "authors": "Laksh Agrawal",
+    "name": "Version 204d7651",
+    "description": "",
+    "autosaved": false,
+    "workflowPublishHistory": [
+      {
+        "createdAt": "2026-02-12T20:12:26.611Z",
+        "id": 224,
+        "workflowId": "XltKceTO8rGqvP4j",
+        "versionId": "204d7651-40e2-4825-a32a-aa2650efaabe",
+        "event": "activated",
+        "userId": "ec164287-6cde-4606-b0c4-9d4cd30c3b98"
+      }
+    ]
+  }
+}

@@ -1,0 +1,2159 @@
+{
+  "updatedAt": "2026-02-10T23:47:01.412Z",
+  "createdAt": "2026-02-09T21:52:14.032Z",
+  "id": "242d7QieSdQcAsfd",
+  "name": "Report Generator - Webscan (Phase 1) - Integrationv2",
+  "description": null,
+  "active": true,
+  "isArchived": false,
+  "nodes": [
+    {
+      "parameters": {
+        "httpMethod": "POST",
+        "path": "7c59a781-7798-448e-8ff0-e50dcb418b52",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 2.1,
+      "position": [
+        -14624,
+        10496
+      ],
+      "id": "cc14648e-9e51-4563-9978-f0fbab8dd376",
+      "name": "Webhook",
+      "webhookId": "7c59a781-7798-448e-8ff0-e50dcb418b52"
+    },
+    {
+      "parameters": {
+        "httpMethod": "POST",
+        "path": "291c59b9-ea34-4068-bf04-36bb7b6a3fdd",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 2.1,
+      "position": [
+        -33072,
+        22656
+      ],
+      "id": "5d0bb149-103a-4d31-80f3-bfc4d60e03b7",
+      "name": "Webhook Trigger",
+      "webhookId": "291c59b9-ea34-4068-bf04-36bb7b6a3fdd"
+    },
+    {
+      "parameters": {
+        "operation": "get",
+        "tableId": "assessment_versions",
+        "filters": {
+          "conditions": [
+            {
+              "keyName": "id",
+              "keyValue": "={{ $json.body.assessment_version_id }}"
+            }
+          ]
+        }
+      },
+      "type": "n8n-nodes-base.supabase",
+      "typeVersion": 1,
+      "position": [
+        -32848,
+        22656
+      ],
+      "id": "4d7cb9f3-c875-4056-b3ca-9d875cdc4006",
+      "name": "Fetch Assessment Version",
+      "credentials": {
+        "supabaseApi": {
+          "id": "FTSugGkqwnuu6irz",
+          "name": "SupaStack"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "operation": "get",
+        "tableId": "assessments",
+        "filters": {
+          "conditions": [
+            {
+              "keyName": "id",
+              "keyValue": "={{ $json.assessment_id }}"
+            }
+          ]
+        }
+      },
+      "type": "n8n-nodes-base.supabase",
+      "typeVersion": 1,
+      "position": [
+        -32624,
+        22656
+      ],
+      "id": "7b536ae2-be73-4f55-91ac-f10cd13b2877",
+      "name": "Fetch Assessment",
+      "credentials": {
+        "supabaseApi": {
+          "id": "FTSugGkqwnuu6irz",
+          "name": "SupaStack"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "operation": "get",
+        "tableId": "organizations",
+        "filters": {
+          "conditions": [
+            {
+              "keyName": "id",
+              "keyValue": "={{ $json.organization_id }}"
+            }
+          ]
+        }
+      },
+      "type": "n8n-nodes-base.supabase",
+      "typeVersion": 1,
+      "position": [
+        -32400,
+        22656
+      ],
+      "id": "efc91fe8-242a-4261-a555-f8543e6e4f7a",
+      "name": "Fetch Organization",
+      "credentials": {
+        "supabaseApi": {
+          "id": "FTSugGkqwnuu6irz",
+          "name": "SupaStack"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "operation": "get",
+        "tableId": "company_profiles",
+        "filters": {
+          "conditions": [
+            {
+              "keyName": "organization_id",
+              "keyValue": "={{ $json.id }}"
+            }
+          ]
+        }
+      },
+      "type": "n8n-nodes-base.supabase",
+      "typeVersion": 1,
+      "position": [
+        -32176,
+        22656
+      ],
+      "id": "e93b3f5d-8b9f-427a-9e3d-fc5300115f21",
+      "name": "Fetch Company Profile",
+      "credentials": {
+        "supabaseApi": {
+          "id": "FTSugGkqwnuu6irz",
+          "name": "SupaStack"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "operation": "get",
+        "tableId": "dimension_analyses",
+        "filters": {
+          "conditions": [
+            {
+              "keyName": "version_id",
+              "keyValue": "={{ $('Fetch Assessment Version').item.json.id }}"
+            }
+          ]
+        }
+      },
+      "type": "n8n-nodes-base.supabase",
+      "typeVersion": 1,
+      "position": [
+        -31952,
+        22656
+      ],
+      "id": "8e061951-bc32-4404-895a-17011139c264",
+      "name": "Fetch Dimension Analyses",
+      "credentials": {
+        "supabaseApi": {
+          "id": "FTSugGkqwnuu6irz",
+          "name": "SupaStack"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "jsCode": "// ============================================================\n// CONSOLIDATE ALL DATA\n// ============================================================\n\nconst webhookData = $('Webhook Trigger').first().json;\nconst versionData = $('Fetch Assessment Version').first().json;\nconst assessmentData = $('Fetch Assessment').first().json;\nconst orgData = $('Fetch Organization').first().json;\n\n// Company profile might not exist\nlet profileData = {};\ntry {\n  profileData = $('Fetch Company Profile').first().json || {};\n} catch (e) {\n  profileData = {};\n}\n\n// Get all dimension analyses\nconst dimensionItems = $('Fetch Dimension Analyses').all();\nconst dimensions = dimensionItems.map(item => item.json);\n\n// Parse playbook content if it's a string\nlet playbookContent = assessmentData.playbook_content_snapshot;\nif (typeof playbookContent === 'string') {\n  try {\n    playbookContent = JSON.parse(playbookContent);\n  } catch (e) {\n    playbookContent = {};\n  }\n}\n\nconst assessmentType = assessmentData.assessment_type || 'gtm_readiness';\nconst playbookType = assessmentType === 'partnership' ? 'Partnership Readiness' : 'GTM AI Readiness';\n\nreturn {\n  // IDs\n  assessmentVersionId: versionData.id,\n  assessmentId: assessmentData.id,\n  organizationId: orgData.id,\n  \n  // Company Info\n  companyName: assessmentData.company_name || orgData.name || 'Unknown Company',\n  companyDomain: orgData.domain || '',\n  industry: profileData.industry_primary || orgData.industry || 'Technology',\n  industrySecondary: profileData.industry_secondary || '',\n  companySize: profileData.employee_range || orgData.company_size || 'Unknown',\n  arrRange: profileData.estimated_arr_range || orgData.arr_range || 'Unknown',\n  businessModel: profileData.business_model || '',\n  targetMarket: profileData.target_market || '',\n  classification: profileData.classification || {},\n  \n  // Assessment Info\n  assessmentType: assessmentType,\n  playbookType: playbookType,\n  versionNumber: versionData.version_number || 1,\n  versionType: versionData.version_type || 'web_scan',\n  dimensionCount: dimensions.length,\n  playbookContent: playbookContent,\n  dimensions: dimensions,\n  \n  // Timestamps\n  analysisStartedAt: versionData.started_at,\n  analysisCompletedAt: versionData.completed_at,\n  reportTriggeredAt: webhookData.triggered_at || new Date().toISOString()\n};"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        -31728,
+        22656
+      ],
+      "id": "2e2cf456-98f2-4a62-84f8-7200071bcf40",
+      "name": "Consolidate All Data"
+    },
+    {
+      "parameters": {
+        "jsCode": "// ============================================================\n// CALCULATE SCORES & INSIGHTS\n// ============================================================\nconst data = $input.first().json;\nconst dimensions = data.dimensions;\n\n// Helper to safely parse JSON fields (might be strings or already parsed)\nfunction safeArray(val) {\n  if (Array.isArray(val)) return val;\n  if (typeof val === 'string') {\n    try { return JSON.parse(val); } catch(e) { return []; }\n  }\n  return [];\n}\n\n// Calculate Overall Score (capped at 55% for webscan)\nconst totalWeightedScore = dimensions.reduce((sum, d) => sum + (parseFloat(d.weighted_score) || 0), 0);\nconst maxWebscanScore = 55;\nconst rawOverallScore = Math.round(totalWeightedScore);\nconst overallScore = Math.min(rawOverallScore, maxWebscanScore);\n\n// Determine Maturity Level\nlet maturityLevel;\nif (overallScore <= 20) maturityLevel = 'Reactive';\nelse if (overallScore <= 35) maturityLevel = 'Developing';\nelse if (overallScore <= 50) maturityLevel = 'Defined';\nelse maturityLevel = 'Defined (Webscan Max)';\n\n// Calculate Confidence\nconst avgConfidence = Math.round(\n  dimensions.reduce((sum, d) => sum + (d.confidence_score || 50), 0) / dimensions.length\n);\n\nlet confidenceCategory;\nif (avgConfidence >= 70) confidenceCategory = 'validated';\nelse if (avgConfidence >= 50) confidenceCategory = 'informed_estimate';\nelse if (avgConfidence >= 30) confidenceCategory = 'low_confidence';\nelse confidenceCategory = 'insufficient_data';\n\n// Sort Dimensions\nconst sortedByScoreAsc = [...dimensions].sort((a, b) => (a.raw_score || 0) - (b.raw_score || 0));\nconst sortedByScoreDesc = [...dimensions].sort((a, b) => (b.raw_score || 0) - (a.raw_score || 0));\n\n// Top Gaps (3 lowest)\nconst topGaps = sortedByScoreAsc.slice(0, 3).map(d => ({\n  dimensionKey: d.dimension_key,\n  dimensionName: d.dimension_name,\n  score: d.raw_score,\n  maturityLevel: d.maturity_level,\n  gaps: safeArray(d.gaps),\n  topGap: safeArray(d.gaps)[0] || null\n}));\n\n// Top Strengths (3 highest)\nconst topStrengths = sortedByScoreDesc.slice(0, 3).map(d => ({\n  dimensionKey: d.dimension_key,\n  dimensionName: d.dimension_name,\n  score: d.raw_score,\n  maturityLevel: d.maturity_level,\n  strengths: safeArray(d.strengths),\n  topStrength: safeArray(d.strengths)[0] || null\n}));\n\n// Aggregate Quick Wins\nconst allQuickWins = dimensions.flatMap(d => \n  safeArray(d.quick_wins).map(qw => ({ ...qw, dimensionKey: d.dimension_key, dimensionName: d.dimension_name }))\n).slice(0, 10);\n\n// Aggregate Recommendations\nconst allRecommendations = dimensions.flatMap(d => \n  safeArray(d.recommendations).map(r => ({ ...r, dimensionKey: d.dimension_key, dimensionName: d.dimension_name }))\n);\n\n// Format Dimensions\nconst formattedDimensions = dimensions.map(d => ({\n  key: d.dimension_key,\n  name: d.dimension_name,\n  weight: d.dimension_weight,\n  rawScore: d.raw_score || 0,\n  weightedScore: d.weighted_score || 0,\n  maturityLevel: d.maturity_level || 'Unknown',\n  confidenceScore: d.confidence_score || 50,\n  confidenceCategory: d.confidence_category || 'informed_estimate',\n  summary: d.analysis_summary || '',\n  strengths: safeArray(d.strengths),\n  gaps: safeArray(d.gaps),\n  quickWins: safeArray(d.quick_wins),\n  recommendations: safeArray(d.recommendations),\n  limitations: safeArray(d.limitations),\n  evidenceSources: safeArray(d.evidence_sources)\n}));\n\n// Dimension Scores Map\nconst dimensionScoresMap = {};\nformattedDimensions.forEach(d => {\n  dimensionScoresMap[d.key] = { score: d.rawScore, level: d.maturityLevel, confidence: d.confidenceScore };\n});\n\nreturn {\n  ...data,\n  overallScore,\n  rawOverallScore,\n  maxWebscanScore,\n  maturityLevel,\n  avgConfidence,\n  confidenceCategory,\n  topGaps,\n  topStrengths,\n  allQuickWins,\n  allRecommendations,\n  formattedDimensions,\n  dimensionScoresMap,\n  reportGeneratedAt: new Date().toISOString(),\n  stageNumber: 1,\n  stageName: 'Webscan Analysis'\n};"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        -31504,
+        22656
+      ],
+      "id": "dd0c764f-9627-448c-94c8-2c271866912c",
+      "name": "Calculate Scores"
+    },
+    {
+      "parameters": {
+        "promptType": "define",
+        "text": "# TASK\nAnalyze the provided Company Context and write the Executive Summary.\n\n# INPUT DATA\n- Company: {{ $json.companyName }}\n- Industry: {{ $json.industry }}\n- Overall Score: {{ $json.overallScore }}/100\n- Maturity Level: {{ $json.maturityLevel }}\n- Top Strengths: {{ JSON.stringify($json.topStrengths) }}\n- Top Gaps: {{ JSON.stringify($json.topGaps) }}\n- Quick Wins: {{ JSON.stringify($json.allQuickWins.slice(0,3)) }}\n\n# REQUIRED OUTPUT FORMAT\n{\n  \"section_1_paragraph_1\": \"First paragraph text...\",\n  \"section_1_paragraph_2\": \"Second paragraph text...\",\n  \"section_1_central_finding\": \"One sentence central insight...\",\n  \"section_1_commercial_para_1\": \"Commercial impact paragraph 1...\",\n  \"section_1_commercial_para_2\": \"Commercial impact paragraph 2...\",\n  \"strategic_choice_header\": \" The Strategic Pivot\",\n  \"strategic_choices\": [\n    { \"title\": \"Choice A\", \"description\": \"Description...\" },\n    { \"title\": \"Choice B\", \"description\": \"Description...\" }\n  ]\n}\n",
+        "options": {
+          "systemMessage": "# ROLE\nYou are a senior business strategist. Your task is to write the Executive Summary for a Strategic Assessment Report.\n\n# RULES\n1. Tone: Professional, advisory, McKinsey-style.\n2. Output STRICT JSON only. No markdown formatting (no ```json ... ``` blocks).\n3. Do not include introductory text. Start and end with curly braces.\n"
+        }
+      },
+      "type": "@n8n/n8n-nodes-langchain.agent",
+      "typeVersion": 1.7,
+      "position": [
+        -30832,
+        21968
+      ],
+      "id": "70c8a2db-0e40-40b6-b576-cffbbdb8d5d1",
+      "name": "Executive Summary Agent"
+    },
+    {
+      "parameters": {
+        "promptType": "define",
+        "text": "# TASK\nAnalyze the {{ $('Calculate Scores').item.json.dimensionCount }} dimensions provided below.\n\n# COMPANY CONTEXT\n- Company: {{ $('Calculate Scores').item.json.companyName }}\n- Industry: {{ $('Calculate Scores').item.json.industry }}\n- Overall Score: {{ $('Calculate Scores').item.json.overallScore }}/100\n\n# INPUT DATA\n{{ JSON.stringify($('Calculate Scores').item.json.formattedDimensions, null, 2) }}\n\n# REQUIRED OUTPUT FORMAT\n[\n  {\n    \"dimension_name\": \"Name\",\n    \"dimension_key\": \"key\",\n    \"score\": 42,\n    \"maturity_level\": \"Developing\",\n    \"score_context\": \"Analysis...\",\n    \"key_finding\": \"Finding...\",\n    \"critical_gap\": \"Gap...\",\n    \"priority_action\": \"Action...\"\n  }\n]\n",
+        "options": {
+          "systemMessage": "# ROLE\nYou are a senior business analyst. Your task is to analyze specific business dimensions based on score data.\n\n# RULES\n1. Provide structured, actionable analysis for EACH dimension.\n2. Output STRICT JSON array only.\n3. Be specific and data-driven.\n"
+        }
+      },
+      "type": "@n8n/n8n-nodes-langchain.agent",
+      "typeVersion": 1.7,
+      "position": [
+        -30832,
+        22368
+      ],
+      "id": "c7d41404-5672-40cf-9f33-167e6420a6c9",
+      "name": "Dimension Analysis Agent"
+    },
+    {
+      "parameters": {
+        "promptType": "define",
+        "text": "# TASK\nCreate an implementation roadmap based on the gaps and recommendations.\n\n# COMPANY CONTEXT\n- Company: {{ $('Calculate Scores').item.json.companyName }}\n- Current Maturity: {{ $('Calculate Scores').item.json.overallScore }}/100\n\n# INPUT DATA\nTOP GAPS: {{ JSON.stringify($('Calculate Scores').item.json.topGaps, null, 2) }}\nQUICK WINS: {{ JSON.stringify($('Calculate Scores').item.json.allQuickWins, null, 2) }}\nRECOMMENDATIONS: {{ JSON.stringify($('Calculate Scores').item.json.allRecommendations, null, 2) }}\n\n# REQUIRED OUTPUT FORMAT\n{\n  \"phase1\": {\n    \"name\": \"Foundation\",\n    \"timeline\": \"Months 1-3\",\n    \"focus\": \"...\",\n    \"initiatives\": [ { \"title\": \"...\", \"impact\": \"HIGH\", \"effort\": \"LOW\" } ]\n  },\n  \"phase2\": { ... },\n  \"phase3\": { ... }\n}\n",
+        "options": {
+          "systemMessage": "# ROLE\nYou are a senior strategist creating an implementation roadmap.\n\n# RULES\n1. Create a logical 3-phase roadmap.\n2. Prioritize Quick Wins in Phase 1.\n3. Output STRICT JSON only.\n"
+        }
+      },
+      "type": "@n8n/n8n-nodes-langchain.agent",
+      "typeVersion": 1.7,
+      "position": [
+        -30832,
+        22560
+      ],
+      "id": "710ba58e-59bf-4195-953a-801b350cdac8",
+      "name": "Roadmap Agent"
+    },
+    {
+      "parameters": {
+        "jsCode": "// Prepare competitive search queries\nconst data = $input.first().json;\nconst industry = data.industry || 'technology';\n\nconst queries = [\n  `${industry} market leaders AI adoption GTM strategy 2024 2025`,\n  `${industry} SaaS companies revenue operations best practices`,\n  `top ${industry} companies technology stack comparison`\n];\n\nreturn {\n  ...data,\n  competitiveSearchQueries: queries,\n  searchQuery: queries[0]\n};"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        -31280,
+        22752
+      ],
+      "id": "c00becd3-ca20-4db0-9951-8973e8aef417",
+      "name": "Prepare Search Queries"
+    },
+    {
+      "parameters": {
+        "promptType": "define",
+        "text": "# TASK\nAnalyze the competitive landscape for {{ $('Calculate Scores').item.json.companyName }}.\n\n# COMPANY CONTEXT\n- Industry: {{ $('Calculate Scores').item.json.industry }}\n- Maturity Score: {{ $('Calculate Scores').item.json.overallScore }}/100\n\n# COMPETITIVE RESEARCH DATA\n{{ JSON.stringify($('Tavily Search').item.json, null, 2) }}\n\n# REQUIRED OUTPUT FORMAT\n{\n  \"market_overview\": \"...\",\n  \"market_segments\": [ ... ],\n  \"company_position\": { ... },\n  \"competitive_advantages\": [ ... ],\n  \"competitive_threats\": [ ... ]\n}\n",
+        "options": {
+          "systemMessage": "# ROLE\nYou are a competitive intelligence analyst.\n\n# RULES\n1. Synthesize the provided search results into a market position analysis.\n2. Be objective and cite sources where possible.\n3. Output STRICT JSON only.\n"
+        }
+      },
+      "type": "@n8n/n8n-nodes-langchain.agent",
+      "typeVersion": 1.7,
+      "position": [
+        -30832,
+        22752
+      ],
+      "id": "2b45d219-1399-4ace-a0dd-69f9a62cfa45",
+      "name": "Competitive Analysis Agent"
+    },
+    {
+      "parameters": {
+        "model": "anthropic/claude-sonnet-4.5",
+        "options": {}
+      },
+      "type": "@n8n/n8n-nodes-langchain.lmChatOpenRouter",
+      "typeVersion": 1,
+      "position": [
+        -30768,
+        22192
+      ],
+      "id": "147aaedc-79da-42f0-8213-1f1e28b2b0db",
+      "name": "Claude Sonnet 4",
+      "credentials": {
+        "openRouterApi": {
+          "id": "DPnbXJEN5OpXBJeM",
+          "name": "OpenRouter account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "jsCode": "// ============================================================\n// AGGREGATE RAW AGENT OUTPUTS\n// ============================================================\n\nconst baseData = $('Calculate Scores').first().json;\nconst publicTemplate = $('Fetch Public Template').first().json;\nconst fullReportTemplate = $('Fetch Report Template').first().json;\n\nconst execSummaryOutput = $('Executive Summary Agent').first().json.output || '';\nconst dimensionOutput = $('Dimension Analysis Agent').first().json.output || '[]';\nconst roadmapOutput = $('Roadmap Agent').first().json.output || '{}';\nconst competitiveOutput = $('Competitive Analysis Agent').first().json.output || '{}';\n\nfunction safeParseJSON(str, fallback) {\n  try {\n    const jsonMatch = str.match(/```(?:json)?\\n?([\\s\\S]*?)\\n?```/);\n    if (jsonMatch) return JSON.parse(jsonMatch[1]);\n    return JSON.parse(str);\n  } catch (e) {\n    return fallback;\n  }\n}\n\nconst dimensionAnalysis = safeParseJSON(dimensionOutput, []);\nconst roadmap = safeParseJSON(roadmapOutput, {});\nconst competitiveAnalysis = safeParseJSON(competitiveOutput, {});\n\nconst agentOutputsRaw = {\n  executive_summary_agent: {\n    output: execSummaryOutput,\n    model: 'claude-sonnet-4',\n    generated_at: new Date().toISOString()\n  },\n  dimension_analysis_agent: {\n    output: dimensionOutput,\n    parsed: dimensionAnalysis,\n    model: 'claude-sonnet-4',\n    generated_at: new Date().toISOString()\n  },\n  roadmap_agent: {\n    output: roadmapOutput,\n    parsed: roadmap,\n    model: 'claude-sonnet-4',\n    generated_at: new Date().toISOString()\n  },\n  competitive_analysis_agent: {\n    output: competitiveOutput,\n    parsed: competitiveAnalysis,\n    model: 'claude-sonnet-4',\n    generated_at: new Date().toISOString(),\n    sources: competitiveAnalysis.sources || []\n  }\n};\n\nreturn {\n  publicTemplate,\n  fullReportTemplate,\n  ...baseData,\n  agentOutputsRaw,\n  executiveSummary: execSummaryOutput,\n  dimensionAnalysis,\n  roadmap,\n  competitiveAnalysis\n};"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        -30256,
+        22656
+      ],
+      "id": "f2333976-c7eb-4327-8a1e-b880adab3c22",
+      "name": "Aggregate Raw Outputs"
+    },
+    {
+      "parameters": {
+        "promptType": "define",
+        "text": "=You are an expert report writer generating a complete HTML assessment report.\n\n## TEMPLATE TO FOLLOW\nYou MUST use this exact HTML template structure and CSS. Copy the CSS exactly. Follow the HTML structure exactly. Only change the CONTENT to be dynamic based on the company data.\n\n{{ $('Fetch Report Template').first().json.template_html }}\n\n## AVAILABLE COMPONENTS\n{{ JSON.stringify($('Fetch Report Template').first().json.available_components, null, 2) }}\n\n## SECTIONS TO INCLUDE\n{{ JSON.stringify($('Fetch Report Template').first().json.sections, null, 2) }}\n\n## AGENT INSTRUCTIONS\n{{ $('Fetch Report Template').first().json.agent_instructions }}\n\n---\n\n## COMPANY DATA\nCompany: {{ $json.companyName }}\nIndustry: {{ $json.industry }}\nOverall Score: {{ $json.overallScore }}/100\nMaturity Level: {{ $json.maturityLevel }}\nPlaybook Type: {{ $json.playbookType }}\nStage: {{ $json.stageNumber }}\nDimension Count: {{ $json.dimensionCount }}\nAverage Confidence: {{ $json.avgConfidence }}%\nMax Webscan Score: {{ $json.maxWebscanScore }}%\nReport Date: {{ $json.reportGeneratedAt }}\n\n## DIMENSION SCORES\n{{ JSON.stringify($json.formattedDimensions, null, 2) }}\n\n## TOP GAPS\n{{ JSON.stringify($json.topGaps, null, 2) }}\n\n## QUICK WINS\n{{ JSON.stringify($json.allQuickWins, null, 2) }}\n\n## AGENT OUTPUTS\n\n### Executive Summary:\n{{ $('Executive Summary Agent').first().json.output }}\n\n### Dimension Analysis:\n{{ JSON.stringify($('Dimension Analysis Agent').first().json.output, null, 2) }}\n\n### Roadmap:\n{{ JSON.stringify($('Roadmap Agent').first().json.output, null, 2) }}\n\n### Competitive Analysis:\n{{ JSON.stringify($('Competitive Analysis Agent').first().json.output, null, 2) }}\n\n---\n\nGenerate the complete HTML report now. Output ONLY the HTML, starting with <!DOCTYPE html>.",
+        "options": {}
+      },
+      "type": "@n8n/n8n-nodes-langchain.agent",
+      "typeVersion": 1.7,
+      "position": [
+        -30032,
+        22416
+      ],
+      "id": "3480da89-f5fc-4810-afd5-039c1cb81cf8",
+      "name": "Unification Agent"
+    },
+    {
+      "parameters": {
+        "jsCode": "// Parse HTML Output\nconst agentOutput = $('Unification Agent').first().json.output || '';\n\n// Clean up the output - remove any markdown code blocks if present\nlet html = agentOutput.trim();\nif (html.startsWith('```html')) {\n  html = html.replace(/^```html\\n?/, '').replace(/\\n?```$/, '');\n} else if (html.startsWith('```')) {\n  html = html.replace(/^```\\n?/, '').replace(/\\n?```$/, '');\n}\n\n// Validate it starts with DOCTYPE\nif (!html.toLowerCase().startsWith('<!doctype html>')) {\n  // Try to find the doctype\n  const doctypeIndex = html.toLowerCase().indexOf('<!doctype html>');\n  if (doctypeIndex > -1) {\n    html = html.substring(doctypeIndex);\n  } else {\n    throw new Error('Agent output does not contain valid HTML document');\n  }\n}\n\n// Validate it ends with </html>\nif (!html.toLowerCase().endsWith('</html>')) {\n  const htmlEndIndex = html.toLowerCase().lastIndexOf('</html>');\n  if (htmlEndIndex > -1) {\n    html = html.substring(0, htmlEndIndex + 7);\n  }\n}\n\nconst data = $input.first().json;\n\n/*return {\n  ...data,\n  reportHtml: html,\n  htmlLength: html.length,\n  generatedAt: new Date().toISOString()\n};*/\n\n\nreturn {\n \n  reportHtml: html\n \n};"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        -29680,
+        22512
+      ],
+      "id": "22d76ed2-76e5-4f9d-85f6-f41dc7a1e713",
+      "name": "Parse Unified Output"
+    },
+    {
+      "parameters": {
+        "tableId": "assessment_results",
+        "fieldsUi": {
+          "fieldValues": [
+            {
+              "fieldId": "version_id",
+              "fieldValue": "={{ $('Aggregate Raw Outputs').first().json.assessmentVersionId }}"
+            },
+            {
+              "fieldId": "executive_summary",
+              "fieldValue": "={{ $('Aggregate Raw Outputs').first().json.executiveSummary }}"
+            },
+            {
+              "fieldId": "critical_gaps",
+              "fieldValue": "={{ JSON.stringify($('Aggregate Raw Outputs').first().json.topGaps) }}"
+            },
+            {
+              "fieldId": "quick_wins",
+              "fieldValue": "={{ JSON.stringify($('Aggregate Raw Outputs').first().json.allQuickWins) }}"
+            },
+            {
+              "fieldId": "transformation_roadmap",
+              "fieldValue": "={{ JSON.stringify($('Aggregate Raw Outputs').first().json.allRecommendations) }}"
+            },
+            {
+              "fieldId": "report_html",
+              "fieldValue": "={{ $input.all().find(i => i.json.reportHtml)?.json.reportHtml ?? \"\" }}"
+            },
+            {
+              "fieldId": "dimension_scores",
+              "fieldValue": "={{ JSON.stringify($('Aggregate Raw Outputs').first().json.dimensionScoresMap) }}"
+            },
+            {
+              "fieldId": "overall_score",
+              "fieldValue": "={{ $('Aggregate Raw Outputs').first()?.json?.overallScore ?? 0 }}"
+            },
+            {
+              "fieldId": "confidence_score",
+              "fieldValue": "={{ $('Aggregate Raw Outputs').first()?.json?.avgConfidence ?? 0 }}"
+            },
+            {
+              "fieldId": "report_html_public",
+              "fieldValue": "={{ $input.all().find(i => i.json.reportHtmlPublic)?.json.reportHtmlPublic ?? \"\" }}"
+            }
+          ]
+        }
+      },
+      "type": "n8n-nodes-base.supabase",
+      "typeVersion": 1,
+      "position": [
+        -29216,
+        22480
+      ],
+      "id": "171bb0e1-67ae-4c72-8184-c7534f3982c0",
+      "name": "Save Assessment Results",
+      "executeOnce": true,
+      "credentials": {
+        "supabaseApi": {
+          "id": "FTSugGkqwnuu6irz",
+          "name": "SupaStack"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "operation": "update",
+        "tableId": "prospects",
+        "filters": {
+          "conditions": [
+            {
+              "keyName": "company_name",
+              "condition": "eq",
+              "keyValue": "={{ $('Aggregate Raw Outputs').first().json.companyName }}"
+            }
+          ]
+        },
+        "fieldsUi": {
+          "fieldValues": [
+            {
+              "fieldId": "report_html",
+              "fieldValue": "={{ $input.all().find(i => i.json.reportHtml)?.json.reportHtml ?? \"\" }}"
+            },
+            {
+              "fieldId": "status",
+              "fieldValue": "completed"
+            },
+            {
+              "fieldId": "confidence_score",
+              "fieldValue": "={{ $('Aggregate Raw Outputs').first().json.overallScore }}"
+            },
+            {
+              "fieldId": "company_domain",
+              "fieldValue": "={{ $('Aggregate Raw Outputs').first().json.companyDomain }}"
+            },
+            {
+              "fieldId": "report_html_public",
+              "fieldValue": "={{ $input.all().find(i => i.json.reportHtmlPublic)?.json.reportHtmlPublic ?? \"\" }}"
+            }
+          ]
+        }
+      },
+      "type": "n8n-nodes-base.supabase",
+      "typeVersion": 1,
+      "position": [
+        -29232,
+        22752
+      ],
+      "id": "8868210d-77bd-42b7-999f-18f432c11f5a",
+      "name": "Update Prospect",
+      "executeOnce": true,
+      "credentials": {
+        "supabaseApi": {
+          "id": "FTSugGkqwnuu6irz",
+          "name": "SupaStack"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "numberInputs": 6
+      },
+      "type": "n8n-nodes-base.merge",
+      "typeVersion": 3.2,
+      "position": [
+        -30480,
+        22592
+      ],
+      "id": "9149b953-b787-4f8d-9e64-4754070bcbde",
+      "name": "Merge"
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "https://api.tavily.com/search",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "Content-Type",
+              "value": "application/json"
+            }
+          ]
+        },
+        "sendBody": true,
+        "bodyParameters": {
+          "parameters": [
+            {
+              "name": "api_key",
+              "value": "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"
+            },
+            {
+              "name": "query",
+              "value": "={{ $json.companyName }} competitors"
+            },
+            {
+              "name": "search_depth",
+              "value": "advanced"
+            },
+            {
+              "name": "max_results",
+              "value": "30"
+            },
+            {
+              "name": "include_answer",
+              "value": true
+            },
+            {
+              "name": "include_raw_content",
+              "value": false
+            }
+          ]
+        },
+        "options": {}
+      },
+      "id": "8ce2cadf-e3cf-496e-aa4c-212f2b3df961",
+      "name": "Tavily Search",
+      "type": "n8n-nodes-base.httpRequest",
+      "position": [
+        -31056,
+        22752
+      ],
+      "typeVersion": 3,
+      "executeOnce": false
+    },
+    {
+      "parameters": {
+        "model": "anthropic/claude-opus-4.5",
+        "options": {}
+      },
+      "type": "@n8n/n8n-nodes-langchain.lmChatOpenRouter",
+      "typeVersion": 1,
+      "position": [
+        -30128,
+        23008
+      ],
+      "id": "083453b3-dc31-4a12-8eac-72bd5a159179",
+      "name": "OpenRouter Chat Model",
+      "credentials": {
+        "openRouterApi": {
+          "id": "DPnbXJEN5OpXBJeM",
+          "name": "OpenRouter account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "operation": "get",
+        "tableId": "report_templates",
+        "filters": {
+          "conditions": [
+            {
+              "keyName": "is_active",
+              "keyValue": "={{ true }}"
+            },
+            {
+              "keyName": "slug",
+              "keyValue": "=report_2_strategic_assessment"
+            }
+          ]
+        }
+      },
+      "type": "n8n-nodes-base.supabase",
+      "typeVersion": 1,
+      "position": [
+        -30768,
+        22944
+      ],
+      "id": "8259ca38-26c5-4a5b-b64f-83cd0d33fca9",
+      "name": "Fetch Report Template",
+      "credentials": {
+        "supabaseApi": {
+          "id": "FTSugGkqwnuu6irz",
+          "name": "SupaStack"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "promptType": "define",
+        "text": "=You are an expert report writer generating a complete HTML assessment report.\n\n## TEMPLATE TO FOLLOW\nYou MUST use this exact HTML template structure and CSS. Copy the CSS exactly. Follow the HTML structure exactly. Only change the CONTENT to be dynamic based on the company data. Also make sure there is class=\"blur-overlay-container\", never remove it and its inner elements and content whereever its added. Its purpose is to hide some information behind the CTA wall.  \n\n{{ $('Fetch Public Template').first().json.template_html }}\n\n## AVAILABLE COMPONENTS\n{{ JSON.stringify($('Fetch Public Template').first().json.available_components, null, 2) }}\n\n## SECTIONS TO INCLUDE\n{{ JSON.stringify($('Fetch Public Template').first().json.sections, null, 2) }}\n\n## AGENT INSTRUCTIONS\n{{ $('Fetch Public Template').first().json.agent_instructions }}\n\n---\n\n## COMPANY DATA\nCompany: {{ $json.companyName }}\nIndustry: {{ $json.industry }}\nOverall Score: {{ $json.overallScore }}/100\nMaturity Level: {{ $json.maturityLevel }}\nPlaybook Type: {{ $json.playbookType }}\nStage: {{ $json.stageNumber }}\nDimension Count: {{ $json.dimensionCount }}\nAverage Confidence: {{ $json.avgConfidence }}%\nMax Webscan Score: {{ $json.maxWebscanScore }}%\nReport Date: {{ $json.reportGeneratedAt }}\n\n## DIMENSION SCORES\n{{ JSON.stringify($json.formattedDimensions, null, 2) }}\n\n## TOP GAPS\n{{ JSON.stringify($json.topGaps, null, 2) }}\n\n## QUICK WINS\n{{ JSON.stringify($json.allQuickWins, null, 2) }}\n\n## AGENT OUTPUTS\n\n### Executive Summary:\n{{ $('Executive Summary Agent').first().json.output }}\n\n### Dimension Analysis:\n{{ JSON.stringify($('Dimension Analysis Agent').first().json.output, null, 2) }}\n\n### Roadmap:\n{{ JSON.stringify($('Roadmap Agent').first().json.output, null, 2) }}\n\n### Competitive Analysis:\n{{ JSON.stringify($('Competitive Analysis Agent').first().json.output, null, 2) }}\n\n---\n\nGenerate the complete HTML report now. Output ONLY the HTML, starting with <!DOCTYPE html>.",
+        "options": {}
+      },
+      "type": "@n8n/n8n-nodes-langchain.agent",
+      "typeVersion": 1.7,
+      "position": [
+        -30032,
+        22816
+      ],
+      "id": "99c38053-a7f2-464c-aaba-f26aa5ade29f",
+      "name": "Public Unification Agent"
+    },
+    {
+      "parameters": {
+        "jsCode": "// Parse HTML Output\nconst agentOutput = $('Public Unification Agent').first().json.output || '';\n\n// Clean up the output - remove any markdown code blocks if present\nlet html = agentOutput.trim();\nif (html.startsWith('```html')) {\n  html = html.replace(/^```html\\n?/, '').replace(/\\n?```$/, '');\n} else if (html.startsWith('```')) {\n  html = html.replace(/^```\\n?/, '').replace(/\\n?```$/, '');\n}\n\n// Validate it starts with DOCTYPE\nif (!html.toLowerCase().startsWith('<!doctype html>')) {\n  // Try to find the doctype\n  const doctypeIndex = html.toLowerCase().indexOf('<!doctype html>');\n  if (doctypeIndex > -1) {\n    html = html.substring(doctypeIndex);\n  } else {\n    throw new Error('Agent output does not contain valid HTML document');\n  }\n}\n\n// Validate it ends with </html>\nif (!html.toLowerCase().endsWith('</html>')) {\n  const htmlEndIndex = html.toLowerCase().lastIndexOf('</html>');\n  if (htmlEndIndex > -1) {\n    html = html.substring(0, htmlEndIndex + 7);\n  }\n}\n\nconst data = $input.first().json;\n\n/*return {\n  ...data,\n  reportHtmlPublic: html,\n  htmlLength: html.length,\n  generatedAt: new Date().toISOString()\n};*/\n \nreturn {\n \n  reportHtmlPublic: html\n \n};\n "
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        -29680,
+        22816
+      ],
+      "id": "c6bded78-8d74-4151-af97-dc87463fab10",
+      "name": "Parse Public Output"
+    },
+    {
+      "parameters": {
+        "operation": "get",
+        "tableId": "report_templates",
+        "filters": {
+          "conditions": [
+            {
+              "keyName": "slug",
+              "keyValue": "report_obscure_strategic_assessment"
+            },
+            {
+              "keyName": "is_active",
+              "keyValue": "={{ true }}"
+            }
+          ]
+        }
+      },
+      "id": "6317dc88-0acf-4544-8e08-b4ea412ce9cc",
+      "name": "Fetch Public Template",
+      "type": "n8n-nodes-base.supabase",
+      "typeVersion": 1,
+      "position": [
+        -30768,
+        23136
+      ],
+      "credentials": {
+        "supabaseApi": {
+          "id": "FTSugGkqwnuu6irz",
+          "name": "SupaStack"
+        }
+      }
+    },
+    {
+      "parameters": {},
+      "type": "n8n-nodes-base.merge",
+      "typeVersion": 3.2,
+      "position": [
+        -29440,
+        22608
+      ],
+      "id": "b52b7bc5-6230-47e2-b661-7e957ca88799",
+      "name": "Mergereports"
+    },
+    {
+      "parameters": {
+        "model": "anthropic/claude-opus-4.5",
+        "options": {}
+      },
+      "type": "@n8n/n8n-nodes-langchain.lmChatOpenRouter",
+      "typeVersion": 1,
+      "position": [
+        -30032,
+        22656
+      ],
+      "id": "64db7991-de00-41c7-a88a-3e1e6dda44a2",
+      "name": "OpenRouter Chat Model1",
+      "credentials": {
+        "openRouterApi": {
+          "id": "DPnbXJEN5OpXBJeM",
+          "name": "OpenRouter account"
+        }
+      }
+    }
+  ],
+  "connections": {
+    "Webhook Trigger": {
+      "main": [
+        [
+          {
+            "node": "Fetch Assessment Version",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Fetch Assessment Version": {
+      "main": [
+        [
+          {
+            "node": "Fetch Assessment",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Fetch Assessment": {
+      "main": [
+        [
+          {
+            "node": "Fetch Organization",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Fetch Organization": {
+      "main": [
+        [
+          {
+            "node": "Fetch Company Profile",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Fetch Company Profile": {
+      "main": [
+        [
+          {
+            "node": "Fetch Dimension Analyses",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Fetch Dimension Analyses": {
+      "main": [
+        [
+          {
+            "node": "Consolidate All Data",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Consolidate All Data": {
+      "main": [
+        [
+          {
+            "node": "Calculate Scores",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Calculate Scores": {
+      "main": [
+        [
+          {
+            "node": "Executive Summary Agent",
+            "type": "main",
+            "index": 0
+          },
+          {
+            "node": "Dimension Analysis Agent",
+            "type": "main",
+            "index": 0
+          },
+          {
+            "node": "Roadmap Agent",
+            "type": "main",
+            "index": 0
+          },
+          {
+            "node": "Prepare Search Queries",
+            "type": "main",
+            "index": 0
+          },
+          {
+            "node": "Fetch Report Template",
+            "type": "main",
+            "index": 0
+          },
+          {
+            "node": "Fetch Public Template",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Claude Sonnet 4": {
+      "ai_languageModel": [
+        [
+          {
+            "node": "Executive Summary Agent",
+            "type": "ai_languageModel",
+            "index": 0
+          },
+          {
+            "node": "Dimension Analysis Agent",
+            "type": "ai_languageModel",
+            "index": 0
+          },
+          {
+            "node": "Roadmap Agent",
+            "type": "ai_languageModel",
+            "index": 0
+          },
+          {
+            "node": "Competitive Analysis Agent",
+            "type": "ai_languageModel",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Prepare Search Queries": {
+      "main": [
+        [
+          {
+            "node": "Tavily Search",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Executive Summary Agent": {
+      "main": [
+        [
+          {
+            "node": "Merge",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Dimension Analysis Agent": {
+      "main": [
+        [
+          {
+            "node": "Merge",
+            "type": "main",
+            "index": 1
+          }
+        ]
+      ]
+    },
+    "Roadmap Agent": {
+      "main": [
+        [
+          {
+            "node": "Merge",
+            "type": "main",
+            "index": 2
+          }
+        ]
+      ]
+    },
+    "Competitive Analysis Agent": {
+      "main": [
+        [
+          {
+            "node": "Merge",
+            "type": "main",
+            "index": 3
+          }
+        ]
+      ]
+    },
+    "Aggregate Raw Outputs": {
+      "main": [
+        [
+          {
+            "node": "Unification Agent",
+            "type": "main",
+            "index": 0
+          },
+          {
+            "node": "Public Unification Agent",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Unification Agent": {
+      "main": [
+        [
+          {
+            "node": "Parse Unified Output",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Parse Unified Output": {
+      "main": [
+        [
+          {
+            "node": "Mergereports",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Tavily Search": {
+      "main": [
+        [
+          {
+            "node": "Competitive Analysis Agent",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Merge": {
+      "main": [
+        [
+          {
+            "node": "Aggregate Raw Outputs",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "OpenRouter Chat Model": {
+      "ai_languageModel": [
+        [
+          {
+            "node": "Public Unification Agent",
+            "type": "ai_languageModel",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Fetch Report Template": {
+      "main": [
+        [
+          {
+            "node": "Merge",
+            "type": "main",
+            "index": 4
+          }
+        ]
+      ]
+    },
+    "Public Unification Agent": {
+      "main": [
+        [
+          {
+            "node": "Parse Public Output",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Parse Public Output": {
+      "main": [
+        [
+          {
+            "node": "Mergereports",
+            "type": "main",
+            "index": 1
+          }
+        ]
+      ]
+    },
+    "Fetch Public Template": {
+      "main": [
+        [
+          {
+            "node": "Merge",
+            "type": "main",
+            "index": 5
+          }
+        ]
+      ]
+    },
+    "Update Prospect": {
+      "main": [
+        []
+      ]
+    },
+    "Mergereports": {
+      "main": [
+        [
+          {
+            "node": "Save Assessment Results",
+            "type": "main",
+            "index": 0
+          },
+          {
+            "node": "Update Prospect",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "OpenRouter Chat Model1": {
+      "ai_languageModel": [
+        [
+          {
+            "node": "Unification Agent",
+            "type": "ai_languageModel",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "settings": {
+    "executionOrder": "v1",
+    "availableInMCP": false
+  },
+  "staticData": null,
+  "meta": {
+    "templateCredsSetupCompleted": true
+  },
+  "pinData": {
+    "Webhook Trigger": [
+      {
+        "json": {
+          "headers": {
+            "host": "n8n.srv957266.hstgr.cloud",
+            "user-agent": "axios/1.12.0",
+            "content-length": "220",
+            "accept": "application/json,text/html,application/xhtml+xml,application/xml,text/*;q=0.9, image/*;q=0.8, */*;q=0.7",
+            "accept-encoding": "gzip, compress, deflate, br",
+            "content-type": "application/json",
+            "x-forwarded-for": "172.18.0.1",
+            "x-forwarded-host": "n8n.srv957266.hstgr.cloud",
+            "x-forwarded-port": "443",
+            "x-forwarded-proto": "https",
+            "x-forwarded-server": "62a2dcc014d1",
+            "x-real-ip": "172.18.0.1"
+          },
+          "params": {},
+          "query": {},
+          "body": {
+            "assessment_version_id": "4f74c1c8-59a6-419d-a5b8-19597c41eefe",
+            "assessment_id": "452f69f5-05ba-4c9c-8472-11eda57986f6",
+            "organization_id": "78b19b8d-a500-4ad4-ad37-0ea57c03e1c4",
+            "id": "78b19b8d-a500-4ad4-ad37-0ea57c03e1c4"
+          },
+          "webhookUrl": "https://n8n.srv957266.hstgr.cloud/webhook/291c59b9-ea34-4068-bf04-36bb7b6a3fdd",
+          "executionMode": "production"
+        },
+        "pairedItem": {
+          "item": 0
+        }
+      }
+    ]
+  },
+  "versionId": "53ec81b9-cdef-4793-9c79-67313b0691ba",
+  "activeVersionId": "78b098e4-a8e2-40e6-9f7b-1f23682789c4",
+  "versionCounter": 67,
+  "triggerCount": 2,
+  "shared": [
+    {
+      "updatedAt": "2026-02-09T21:52:14.036Z",
+      "createdAt": "2026-02-09T21:52:14.036Z",
+      "role": "workflow:owner",
+      "workflowId": "242d7QieSdQcAsfd",
+      "projectId": "DVYglwqlfMJuM9zT",
+      "project": {
+        "updatedAt": "2025-10-05T18:15:43.115Z",
+        "createdAt": "2025-08-13T20:40:27.041Z",
+        "id": "DVYglwqlfMJuM9zT",
+        "name": "Laksh Agrawal <laksh@supastack.ai>",
+        "type": "personal",
+        "icon": null,
+        "description": null,
+        "creatorId": "ec164287-6cde-4606-b0c4-9d4cd30c3b98",
+        "projectRelations": [
+          {
+            "updatedAt": "2025-08-13T20:40:27.041Z",
+            "createdAt": "2025-08-13T20:40:27.041Z",
+            "userId": "ec164287-6cde-4606-b0c4-9d4cd30c3b98",
+            "projectId": "DVYglwqlfMJuM9zT",
+            "user": {
+              "updatedAt": "2026-02-21T15:10:03.000Z",
+              "createdAt": "2025-08-13T20:40:26.693Z",
+              "id": "ec164287-6cde-4606-b0c4-9d4cd30c3b98",
+              "email": "laksh@supastack.ai",
+              "firstName": "Laksh",
+              "lastName": "Agrawal",
+              "personalizationAnswers": {
+                "version": "v4",
+                "personalization_survey_submitted_at": "2025-08-13T20:49:45.872Z",
+                "personalization_survey_n8n_version": "1.106.3",
+                "companyIndustryExtended": [],
+                "companyType": "other"
+              },
+              "settings": {
+                "userActivated": true,
+                "easyAIWorkflowOnboarded": true,
+                "firstSuccessfulWorkflowId": "omMzGXpD7rLUfAFm",
+                "userActivatedAt": 1755124587490,
+                "npsSurvey": {
+                  "responded": true,
+                  "lastShownAt": 1759741367883
+                }
+              },
+              "disabled": false,
+              "mfaEnabled": false,
+              "lastActiveAt": "2026-02-20",
+              "isPending": false
+            }
+          }
+        ]
+      }
+    }
+  ],
+  "tags": [],
+  "activeVersion": {
+    "updatedAt": "2026-02-10T23:02:49.000Z",
+    "createdAt": "2026-02-10T22:58:19.123Z",
+    "versionId": "78b098e4-a8e2-40e6-9f7b-1f23682789c4",
+    "workflowId": "242d7QieSdQcAsfd",
+    "nodes": [
+      {
+        "parameters": {
+          "httpMethod": "POST",
+          "path": "7c59a781-7798-448e-8ff0-e50dcb418b52",
+          "options": {}
+        },
+        "type": "n8n-nodes-base.webhook",
+        "typeVersion": 2.1,
+        "position": [
+          -14624,
+          10496
+        ],
+        "id": "cc14648e-9e51-4563-9978-f0fbab8dd376",
+        "name": "Webhook",
+        "webhookId": "7c59a781-7798-448e-8ff0-e50dcb418b52"
+      },
+      {
+        "parameters": {
+          "httpMethod": "POST",
+          "path": "291c59b9-ea34-4068-bf04-36bb7b6a3fdd",
+          "options": {}
+        },
+        "type": "n8n-nodes-base.webhook",
+        "typeVersion": 2.1,
+        "position": [
+          -33072,
+          22656
+        ],
+        "id": "5d0bb149-103a-4d31-80f3-bfc4d60e03b7",
+        "name": "Webhook Trigger",
+        "webhookId": "291c59b9-ea34-4068-bf04-36bb7b6a3fdd"
+      },
+      {
+        "parameters": {
+          "operation": "get",
+          "tableId": "assessment_versions",
+          "filters": {
+            "conditions": [
+              {
+                "keyName": "id",
+                "keyValue": "={{ $json.body.assessment_version_id }}"
+              }
+            ]
+          }
+        },
+        "type": "n8n-nodes-base.supabase",
+        "typeVersion": 1,
+        "position": [
+          -32848,
+          22656
+        ],
+        "id": "4d7cb9f3-c875-4056-b3ca-9d875cdc4006",
+        "name": "Fetch Assessment Version",
+        "credentials": {
+          "supabaseApi": {
+            "id": "FTSugGkqwnuu6irz",
+            "name": "SupaStack"
+          }
+        }
+      },
+      {
+        "parameters": {
+          "operation": "get",
+          "tableId": "assessments",
+          "filters": {
+            "conditions": [
+              {
+                "keyName": "id",
+                "keyValue": "={{ $json.assessment_id }}"
+              }
+            ]
+          }
+        },
+        "type": "n8n-nodes-base.supabase",
+        "typeVersion": 1,
+        "position": [
+          -32624,
+          22656
+        ],
+        "id": "7b536ae2-be73-4f55-91ac-f10cd13b2877",
+        "name": "Fetch Assessment",
+        "credentials": {
+          "supabaseApi": {
+            "id": "FTSugGkqwnuu6irz",
+            "name": "SupaStack"
+          }
+        }
+      },
+      {
+        "parameters": {
+          "operation": "get",
+          "tableId": "organizations",
+          "filters": {
+            "conditions": [
+              {
+                "keyName": "id",
+                "keyValue": "={{ $json.organization_id }}"
+              }
+            ]
+          }
+        },
+        "type": "n8n-nodes-base.supabase",
+        "typeVersion": 1,
+        "position": [
+          -32400,
+          22656
+        ],
+        "id": "efc91fe8-242a-4261-a555-f8543e6e4f7a",
+        "name": "Fetch Organization",
+        "credentials": {
+          "supabaseApi": {
+            "id": "FTSugGkqwnuu6irz",
+            "name": "SupaStack"
+          }
+        }
+      },
+      {
+        "parameters": {
+          "operation": "get",
+          "tableId": "company_profiles",
+          "filters": {
+            "conditions": [
+              {
+                "keyName": "organization_id",
+                "keyValue": "={{ $json.id }}"
+              }
+            ]
+          }
+        },
+        "type": "n8n-nodes-base.supabase",
+        "typeVersion": 1,
+        "position": [
+          -32176,
+          22656
+        ],
+        "id": "e93b3f5d-8b9f-427a-9e3d-fc5300115f21",
+        "name": "Fetch Company Profile",
+        "credentials": {
+          "supabaseApi": {
+            "id": "FTSugGkqwnuu6irz",
+            "name": "SupaStack"
+          }
+        }
+      },
+      {
+        "parameters": {
+          "operation": "get",
+          "tableId": "dimension_analyses",
+          "filters": {
+            "conditions": [
+              {
+                "keyName": "version_id",
+                "keyValue": "={{ $('Fetch Assessment Version').item.json.id }}"
+              }
+            ]
+          }
+        },
+        "type": "n8n-nodes-base.supabase",
+        "typeVersion": 1,
+        "position": [
+          -31952,
+          22656
+        ],
+        "id": "8e061951-bc32-4404-895a-17011139c264",
+        "name": "Fetch Dimension Analyses",
+        "credentials": {
+          "supabaseApi": {
+            "id": "FTSugGkqwnuu6irz",
+            "name": "SupaStack"
+          }
+        }
+      },
+      {
+        "parameters": {
+          "jsCode": "// ============================================================\n// CONSOLIDATE ALL DATA\n// ============================================================\n\nconst webhookData = $('Webhook Trigger').first().json;\nconst versionData = $('Fetch Assessment Version').first().json;\nconst assessmentData = $('Fetch Assessment').first().json;\nconst orgData = $('Fetch Organization').first().json;\n\n// Company profile might not exist\nlet profileData = {};\ntry {\n  profileData = $('Fetch Company Profile').first().json || {};\n} catch (e) {\n  profileData = {};\n}\n\n// Get all dimension analyses\nconst dimensionItems = $('Fetch Dimension Analyses').all();\nconst dimensions = dimensionItems.map(item => item.json);\n\n// Parse playbook content if it's a string\nlet playbookContent = assessmentData.playbook_content_snapshot;\nif (typeof playbookContent === 'string') {\n  try {\n    playbookContent = JSON.parse(playbookContent);\n  } catch (e) {\n    playbookContent = {};\n  }\n}\n\nconst assessmentType = assessmentData.assessment_type || 'gtm_readiness';\nconst playbookType = assessmentType === 'partnership' ? 'Partnership Readiness' : 'GTM AI Readiness';\n\nreturn {\n  // IDs\n  assessmentVersionId: versionData.id,\n  assessmentId: assessmentData.id,\n  organizationId: orgData.id,\n  \n  // Company Info\n  companyName: assessmentData.company_name || orgData.name || 'Unknown Company',\n  companyDomain: orgData.domain || '',\n  industry: profileData.industry_primary || orgData.industry || 'Technology',\n  industrySecondary: profileData.industry_secondary || '',\n  companySize: profileData.employee_range || orgData.company_size || 'Unknown',\n  arrRange: profileData.estimated_arr_range || orgData.arr_range || 'Unknown',\n  businessModel: profileData.business_model || '',\n  targetMarket: profileData.target_market || '',\n  classification: profileData.classification || {},\n  \n  // Assessment Info\n  assessmentType: assessmentType,\n  playbookType: playbookType,\n  versionNumber: versionData.version_number || 1,\n  versionType: versionData.version_type || 'web_scan',\n  dimensionCount: dimensions.length,\n  playbookContent: playbookContent,\n  dimensions: dimensions,\n  \n  // Timestamps\n  analysisStartedAt: versionData.started_at,\n  analysisCompletedAt: versionData.completed_at,\n  reportTriggeredAt: webhookData.triggered_at || new Date().toISOString()\n};"
+        },
+        "type": "n8n-nodes-base.code",
+        "typeVersion": 2,
+        "position": [
+          -31728,
+          22656
+        ],
+        "id": "2e2cf456-98f2-4a62-84f8-7200071bcf40",
+        "name": "Consolidate All Data"
+      },
+      {
+        "parameters": {
+          "jsCode": "// ============================================================\n// CALCULATE SCORES & INSIGHTS\n// ============================================================\nconst data = $input.first().json;\nconst dimensions = data.dimensions;\n\n// Helper to safely parse JSON fields (might be strings or already parsed)\nfunction safeArray(val) {\n  if (Array.isArray(val)) return val;\n  if (typeof val === 'string') {\n    try { return JSON.parse(val); } catch(e) { return []; }\n  }\n  return [];\n}\n\n// Calculate Overall Score (capped at 55% for webscan)\nconst totalWeightedScore = dimensions.reduce((sum, d) => sum + (parseFloat(d.weighted_score) || 0), 0);\nconst maxWebscanScore = 55;\nconst rawOverallScore = Math.round(totalWeightedScore);\nconst overallScore = Math.min(rawOverallScore, maxWebscanScore);\n\n// Determine Maturity Level\nlet maturityLevel;\nif (overallScore <= 20) maturityLevel = 'Reactive';\nelse if (overallScore <= 35) maturityLevel = 'Developing';\nelse if (overallScore <= 50) maturityLevel = 'Defined';\nelse maturityLevel = 'Defined (Webscan Max)';\n\n// Calculate Confidence\nconst avgConfidence = Math.round(\n  dimensions.reduce((sum, d) => sum + (d.confidence_score || 50), 0) / dimensions.length\n);\n\nlet confidenceCategory;\nif (avgConfidence >= 70) confidenceCategory = 'validated';\nelse if (avgConfidence >= 50) confidenceCategory = 'informed_estimate';\nelse if (avgConfidence >= 30) confidenceCategory = 'low_confidence';\nelse confidenceCategory = 'insufficient_data';\n\n// Sort Dimensions\nconst sortedByScoreAsc = [...dimensions].sort((a, b) => (a.raw_score || 0) - (b.raw_score || 0));\nconst sortedByScoreDesc = [...dimensions].sort((a, b) => (b.raw_score || 0) - (a.raw_score || 0));\n\n// Top Gaps (3 lowest)\nconst topGaps = sortedByScoreAsc.slice(0, 3).map(d => ({\n  dimensionKey: d.dimension_key,\n  dimensionName: d.dimension_name,\n  score: d.raw_score,\n  maturityLevel: d.maturity_level,\n  gaps: safeArray(d.gaps),\n  topGap: safeArray(d.gaps)[0] || null\n}));\n\n// Top Strengths (3 highest)\nconst topStrengths = sortedByScoreDesc.slice(0, 3).map(d => ({\n  dimensionKey: d.dimension_key,\n  dimensionName: d.dimension_name,\n  score: d.raw_score,\n  maturityLevel: d.maturity_level,\n  strengths: safeArray(d.strengths),\n  topStrength: safeArray(d.strengths)[0] || null\n}));\n\n// Aggregate Quick Wins\nconst allQuickWins = dimensions.flatMap(d => \n  safeArray(d.quick_wins).map(qw => ({ ...qw, dimensionKey: d.dimension_key, dimensionName: d.dimension_name }))\n).slice(0, 10);\n\n// Aggregate Recommendations\nconst allRecommendations = dimensions.flatMap(d => \n  safeArray(d.recommendations).map(r => ({ ...r, dimensionKey: d.dimension_key, dimensionName: d.dimension_name }))\n);\n\n// Format Dimensions\nconst formattedDimensions = dimensions.map(d => ({\n  key: d.dimension_key,\n  name: d.dimension_name,\n  weight: d.dimension_weight,\n  rawScore: d.raw_score || 0,\n  weightedScore: d.weighted_score || 0,\n  maturityLevel: d.maturity_level || 'Unknown',\n  confidenceScore: d.confidence_score || 50,\n  confidenceCategory: d.confidence_category || 'informed_estimate',\n  summary: d.analysis_summary || '',\n  strengths: safeArray(d.strengths),\n  gaps: safeArray(d.gaps),\n  quickWins: safeArray(d.quick_wins),\n  recommendations: safeArray(d.recommendations),\n  limitations: safeArray(d.limitations),\n  evidenceSources: safeArray(d.evidence_sources)\n}));\n\n// Dimension Scores Map\nconst dimensionScoresMap = {};\nformattedDimensions.forEach(d => {\n  dimensionScoresMap[d.key] = { score: d.rawScore, level: d.maturityLevel, confidence: d.confidenceScore };\n});\n\nreturn {\n  ...data,\n  overallScore,\n  rawOverallScore,\n  maxWebscanScore,\n  maturityLevel,\n  avgConfidence,\n  confidenceCategory,\n  topGaps,\n  topStrengths,\n  allQuickWins,\n  allRecommendations,\n  formattedDimensions,\n  dimensionScoresMap,\n  reportGeneratedAt: new Date().toISOString(),\n  stageNumber: 1,\n  stageName: 'Webscan Analysis'\n};"
+        },
+        "type": "n8n-nodes-base.code",
+        "typeVersion": 2,
+        "position": [
+          -31504,
+          22656
+        ],
+        "id": "dd0c764f-9627-448c-94c8-2c271866912c",
+        "name": "Calculate Scores"
+      },
+      {
+        "parameters": {
+          "promptType": "define",
+          "text": "# TASK\nAnalyze the provided Company Context and write the Executive Summary.\n\n# INPUT DATA\n- Company: {{ $json.companyName }}\n- Industry: {{ $json.industry }}\n- Overall Score: {{ $json.overallScore }}/100\n- Maturity Level: {{ $json.maturityLevel }}\n- Top Strengths: {{ JSON.stringify($json.topStrengths) }}\n- Top Gaps: {{ JSON.stringify($json.topGaps) }}\n- Quick Wins: {{ JSON.stringify($json.allQuickWins.slice(0,3)) }}\n\n# REQUIRED OUTPUT FORMAT\n{\n  \"section_1_paragraph_1\": \"First paragraph text...\",\n  \"section_1_paragraph_2\": \"Second paragraph text...\",\n  \"section_1_central_finding\": \"One sentence central insight...\",\n  \"section_1_commercial_para_1\": \"Commercial impact paragraph 1...\",\n  \"section_1_commercial_para_2\": \"Commercial impact paragraph 2...\",\n  \"strategic_choice_header\": \" The Strategic Pivot\",\n  \"strategic_choices\": [\n    { \"title\": \"Choice A\", \"description\": \"Description...\" },\n    { \"title\": \"Choice B\", \"description\": \"Description...\" }\n  ]\n}\n",
+          "options": {
+            "systemMessage": "# ROLE\nYou are a senior business strategist. Your task is to write the Executive Summary for a Strategic Assessment Report.\n\n# RULES\n1. Tone: Professional, advisory, McKinsey-style.\n2. Output STRICT JSON only. No markdown formatting (no ```json ... ``` blocks).\n3. Do not include introductory text. Start and end with curly braces.\n"
+          }
+        },
+        "type": "@n8n/n8n-nodes-langchain.agent",
+        "typeVersion": 1.7,
+        "position": [
+          -30832,
+          21968
+        ],
+        "id": "70c8a2db-0e40-40b6-b576-cffbbdb8d5d1",
+        "name": "Executive Summary Agent"
+      },
+      {
+        "parameters": {
+          "promptType": "define",
+          "text": "# TASK\nAnalyze the {{ $('Calculate Scores').item.json.dimensionCount }} dimensions provided below.\n\n# COMPANY CONTEXT\n- Company: {{ $('Calculate Scores').item.json.companyName }}\n- Industry: {{ $('Calculate Scores').item.json.industry }}\n- Overall Score: {{ $('Calculate Scores').item.json.overallScore }}/100\n\n# INPUT DATA\n{{ JSON.stringify($('Calculate Scores').item.json.formattedDimensions, null, 2) }}\n\n# REQUIRED OUTPUT FORMAT\n[\n  {\n    \"dimension_name\": \"Name\",\n    \"dimension_key\": \"key\",\n    \"score\": 42,\n    \"maturity_level\": \"Developing\",\n    \"score_context\": \"Analysis...\",\n    \"key_finding\": \"Finding...\",\n    \"critical_gap\": \"Gap...\",\n    \"priority_action\": \"Action...\"\n  }\n]\n",
+          "options": {
+            "systemMessage": "# ROLE\nYou are a senior business analyst. Your task is to analyze specific business dimensions based on score data.\n\n# RULES\n1. Provide structured, actionable analysis for EACH dimension.\n2. Output STRICT JSON array only.\n3. Be specific and data-driven.\n"
+          }
+        },
+        "type": "@n8n/n8n-nodes-langchain.agent",
+        "typeVersion": 1.7,
+        "position": [
+          -30832,
+          22368
+        ],
+        "id": "c7d41404-5672-40cf-9f33-167e6420a6c9",
+        "name": "Dimension Analysis Agent"
+      },
+      {
+        "parameters": {
+          "promptType": "define",
+          "text": "# TASK\nCreate an implementation roadmap based on the gaps and recommendations.\n\n# COMPANY CONTEXT\n- Company: {{ $('Calculate Scores').item.json.companyName }}\n- Current Maturity: {{ $('Calculate Scores').item.json.overallScore }}/100\n\n# INPUT DATA\nTOP GAPS: {{ JSON.stringify($('Calculate Scores').item.json.topGaps, null, 2) }}\nQUICK WINS: {{ JSON.stringify($('Calculate Scores').item.json.allQuickWins, null, 2) }}\nRECOMMENDATIONS: {{ JSON.stringify($('Calculate Scores').item.json.allRecommendations, null, 2) }}\n\n# REQUIRED OUTPUT FORMAT\n{\n  \"phase1\": {\n    \"name\": \"Foundation\",\n    \"timeline\": \"Months 1-3\",\n    \"focus\": \"...\",\n    \"initiatives\": [ { \"title\": \"...\", \"impact\": \"HIGH\", \"effort\": \"LOW\" } ]\n  },\n  \"phase2\": { ... },\n  \"phase3\": { ... }\n}\n",
+          "options": {
+            "systemMessage": "# ROLE\nYou are a senior strategist creating an implementation roadmap.\n\n# RULES\n1. Create a logical 3-phase roadmap.\n2. Prioritize Quick Wins in Phase 1.\n3. Output STRICT JSON only.\n"
+          }
+        },
+        "type": "@n8n/n8n-nodes-langchain.agent",
+        "typeVersion": 1.7,
+        "position": [
+          -30832,
+          22560
+        ],
+        "id": "710ba58e-59bf-4195-953a-801b350cdac8",
+        "name": "Roadmap Agent"
+      },
+      {
+        "parameters": {
+          "jsCode": "// Prepare competitive search queries\nconst data = $input.first().json;\nconst industry = data.industry || 'technology';\n\nconst queries = [\n  `${industry} market leaders AI adoption GTM strategy 2024 2025`,\n  `${industry} SaaS companies revenue operations best practices`,\n  `top ${industry} companies technology stack comparison`\n];\n\nreturn {\n  ...data,\n  competitiveSearchQueries: queries,\n  searchQuery: queries[0]\n};"
+        },
+        "type": "n8n-nodes-base.code",
+        "typeVersion": 2,
+        "position": [
+          -31280,
+          22752
+        ],
+        "id": "c00becd3-ca20-4db0-9951-8973e8aef417",
+        "name": "Prepare Search Queries"
+      },
+      {
+        "parameters": {
+          "promptType": "define",
+          "text": "# TASK\nAnalyze the competitive landscape for {{ $('Calculate Scores').item.json.companyName }}.\n\n# COMPANY CONTEXT\n- Industry: {{ $('Calculate Scores').item.json.industry }}\n- Maturity Score: {{ $('Calculate Scores').item.json.overallScore }}/100\n\n# COMPETITIVE RESEARCH DATA\n{{ JSON.stringify($('Tavily Search').item.json, null, 2) }}\n\n# REQUIRED OUTPUT FORMAT\n{\n  \"market_overview\": \"...\",\n  \"market_segments\": [ ... ],\n  \"company_position\": { ... },\n  \"competitive_advantages\": [ ... ],\n  \"competitive_threats\": [ ... ]\n}\n",
+          "options": {
+            "systemMessage": "# ROLE\nYou are a competitive intelligence analyst.\n\n# RULES\n1. Synthesize the provided search results into a market position analysis.\n2. Be objective and cite sources where possible.\n3. Output STRICT JSON only.\n"
+          }
+        },
+        "type": "@n8n/n8n-nodes-langchain.agent",
+        "typeVersion": 1.7,
+        "position": [
+          -30832,
+          22752
+        ],
+        "id": "2b45d219-1399-4ace-a0dd-69f9a62cfa45",
+        "name": "Competitive Analysis Agent"
+      },
+      {
+        "parameters": {
+          "model": "anthropic/claude-sonnet-4.5",
+          "options": {}
+        },
+        "type": "@n8n/n8n-nodes-langchain.lmChatOpenRouter",
+        "typeVersion": 1,
+        "position": [
+          -30768,
+          22192
+        ],
+        "id": "147aaedc-79da-42f0-8213-1f1e28b2b0db",
+        "name": "Claude Sonnet 4",
+        "credentials": {
+          "openRouterApi": {
+            "id": "DPnbXJEN5OpXBJeM",
+            "name": "OpenRouter account"
+          }
+        }
+      },
+      {
+        "parameters": {
+          "jsCode": "// ============================================================\n// AGGREGATE RAW AGENT OUTPUTS\n// ============================================================\n\nconst baseData = $('Calculate Scores').first().json;\nconst publicTemplate = $('Fetch Public Template').first().json;\nconst fullReportTemplate = $('Fetch Report Template').first().json;\n\nconst execSummaryOutput = $('Executive Summary Agent').first().json.output || '';\nconst dimensionOutput = $('Dimension Analysis Agent').first().json.output || '[]';\nconst roadmapOutput = $('Roadmap Agent').first().json.output || '{}';\nconst competitiveOutput = $('Competitive Analysis Agent').first().json.output || '{}';\n\nfunction safeParseJSON(str, fallback) {\n  try {\n    const jsonMatch = str.match(/```(?:json)?\\n?([\\s\\S]*?)\\n?```/);\n    if (jsonMatch) return JSON.parse(jsonMatch[1]);\n    return JSON.parse(str);\n  } catch (e) {\n    return fallback;\n  }\n}\n\nconst dimensionAnalysis = safeParseJSON(dimensionOutput, []);\nconst roadmap = safeParseJSON(roadmapOutput, {});\nconst competitiveAnalysis = safeParseJSON(competitiveOutput, {});\n\nconst agentOutputsRaw = {\n  executive_summary_agent: {\n    output: execSummaryOutput,\n    model: 'claude-sonnet-4',\n    generated_at: new Date().toISOString()\n  },\n  dimension_analysis_agent: {\n    output: dimensionOutput,\n    parsed: dimensionAnalysis,\n    model: 'claude-sonnet-4',\n    generated_at: new Date().toISOString()\n  },\n  roadmap_agent: {\n    output: roadmapOutput,\n    parsed: roadmap,\n    model: 'claude-sonnet-4',\n    generated_at: new Date().toISOString()\n  },\n  competitive_analysis_agent: {\n    output: competitiveOutput,\n    parsed: competitiveAnalysis,\n    model: 'claude-sonnet-4',\n    generated_at: new Date().toISOString(),\n    sources: competitiveAnalysis.sources || []\n  }\n};\n\nreturn {\n  publicTemplate,\n  fullReportTemplate,\n  ...baseData,\n  agentOutputsRaw,\n  executiveSummary: execSummaryOutput,\n  dimensionAnalysis,\n  roadmap,\n  competitiveAnalysis\n};"
+        },
+        "type": "n8n-nodes-base.code",
+        "typeVersion": 2,
+        "position": [
+          -30256,
+          22656
+        ],
+        "id": "f2333976-c7eb-4327-8a1e-b880adab3c22",
+        "name": "Aggregate Raw Outputs"
+      },
+      {
+        "parameters": {
+          "promptType": "define",
+          "text": "=You are an expert report writer generating a complete HTML assessment report.\n\n## TEMPLATE TO FOLLOW\nYou MUST use this exact HTML template structure and CSS. Copy the CSS exactly. Follow the HTML structure exactly. Only change the CONTENT to be dynamic based on the company data.\n\n{{ $('Fetch Report Template').first().json.template_html }}\n\n## AVAILABLE COMPONENTS\n{{ JSON.stringify($('Fetch Report Template').first().json.available_components, null, 2) }}\n\n## SECTIONS TO INCLUDE\n{{ JSON.stringify($('Fetch Report Template').first().json.sections, null, 2) }}\n\n## AGENT INSTRUCTIONS\n{{ $('Fetch Report Template').first().json.agent_instructions }}\n\n---\n\n## COMPANY DATA\nCompany: {{ $json.companyName }}\nIndustry: {{ $json.industry }}\nOverall Score: {{ $json.overallScore }}/100\nMaturity Level: {{ $json.maturityLevel }}\nPlaybook Type: {{ $json.playbookType }}\nStage: {{ $json.stageNumber }}\nDimension Count: {{ $json.dimensionCount }}\nAverage Confidence: {{ $json.avgConfidence }}%\nMax Webscan Score: {{ $json.maxWebscanScore }}%\nReport Date: {{ $json.reportGeneratedAt }}\n\n## DIMENSION SCORES\n{{ JSON.stringify($json.formattedDimensions, null, 2) }}\n\n## TOP GAPS\n{{ JSON.stringify($json.topGaps, null, 2) }}\n\n## QUICK WINS\n{{ JSON.stringify($json.allQuickWins, null, 2) }}\n\n## AGENT OUTPUTS\n\n### Executive Summary:\n{{ $('Executive Summary Agent').first().json.output }}\n\n### Dimension Analysis:\n{{ JSON.stringify($('Dimension Analysis Agent').first().json.output, null, 2) }}\n\n### Roadmap:\n{{ JSON.stringify($('Roadmap Agent').first().json.output, null, 2) }}\n\n### Competitive Analysis:\n{{ JSON.stringify($('Competitive Analysis Agent').first().json.output, null, 2) }}\n\n---\n\nGenerate the complete HTML report now. Output ONLY the HTML, starting with <!DOCTYPE html>.",
+          "options": {}
+        },
+        "type": "@n8n/n8n-nodes-langchain.agent",
+        "typeVersion": 1.7,
+        "position": [
+          -30032,
+          22416
+        ],
+        "id": "3480da89-f5fc-4810-afd5-039c1cb81cf8",
+        "name": "Unification Agent"
+      },
+      {
+        "parameters": {
+          "jsCode": "// Parse HTML Output\nconst agentOutput = $('Unification Agent').first().json.output || '';\n\n// Clean up the output - remove any markdown code blocks if present\nlet html = agentOutput.trim();\nif (html.startsWith('```html')) {\n  html = html.replace(/^```html\\n?/, '').replace(/\\n?```$/, '');\n} else if (html.startsWith('```')) {\n  html = html.replace(/^```\\n?/, '').replace(/\\n?```$/, '');\n}\n\n// Validate it starts with DOCTYPE\nif (!html.toLowerCase().startsWith('<!doctype html>')) {\n  // Try to find the doctype\n  const doctypeIndex = html.toLowerCase().indexOf('<!doctype html>');\n  if (doctypeIndex > -1) {\n    html = html.substring(doctypeIndex);\n  } else {\n    throw new Error('Agent output does not contain valid HTML document');\n  }\n}\n\n// Validate it ends with </html>\nif (!html.toLowerCase().endsWith('</html>')) {\n  const htmlEndIndex = html.toLowerCase().lastIndexOf('</html>');\n  if (htmlEndIndex > -1) {\n    html = html.substring(0, htmlEndIndex + 7);\n  }\n}\n\nconst data = $input.first().json;\n\n/*return {\n  ...data,\n  reportHtml: html,\n  htmlLength: html.length,\n  generatedAt: new Date().toISOString()\n};*/\n\n\nreturn {\n \n  reportHtml: html\n \n};"
+        },
+        "type": "n8n-nodes-base.code",
+        "typeVersion": 2,
+        "position": [
+          -29680,
+          22512
+        ],
+        "id": "22d76ed2-76e5-4f9d-85f6-f41dc7a1e713",
+        "name": "Parse Unified Output"
+      },
+      {
+        "parameters": {
+          "tableId": "assessment_results",
+          "fieldsUi": {
+            "fieldValues": [
+              {
+                "fieldId": "version_id",
+                "fieldValue": "={{ $('Aggregate Raw Outputs').first().json.assessmentVersionId }}"
+              },
+              {
+                "fieldId": "executive_summary",
+                "fieldValue": "={{ $('Aggregate Raw Outputs').first().json.executiveSummary }}"
+              },
+              {
+                "fieldId": "critical_gaps",
+                "fieldValue": "={{ JSON.stringify($('Aggregate Raw Outputs').first().json.topGaps) }}"
+              },
+              {
+                "fieldId": "quick_wins",
+                "fieldValue": "={{ JSON.stringify($('Aggregate Raw Outputs').first().json.allQuickWins) }}"
+              },
+              {
+                "fieldId": "transformation_roadmap",
+                "fieldValue": "={{ JSON.stringify($('Aggregate Raw Outputs').first().json.allRecommendations) }}"
+              },
+              {
+                "fieldId": "report_html",
+                "fieldValue": "={{ $input.all().find(i => i.json.reportHtml)?.json.reportHtml ?? \"\" }}"
+              },
+              {
+                "fieldId": "dimension_scores",
+                "fieldValue": "={{ JSON.stringify($('Aggregate Raw Outputs').first().json.dimensionScoresMap) }}"
+              },
+              {
+                "fieldId": "overall_score",
+                "fieldValue": "={{ $('Aggregate Raw Outputs').first()?.json?.overallScore ?? 0 }}"
+              },
+              {
+                "fieldId": "confidence_score",
+                "fieldValue": "={{ $('Aggregate Raw Outputs').first()?.json?.avgConfidence ?? 0 }}"
+              },
+              {
+                "fieldId": "report_html_public",
+                "fieldValue": "={{ $input.all().find(i => i.json.reportHtmlPublic)?.json.reportHtmlPublic ?? \"\" }}"
+              }
+            ]
+          }
+        },
+        "type": "n8n-nodes-base.supabase",
+        "typeVersion": 1,
+        "position": [
+          -29216,
+          22480
+        ],
+        "id": "171bb0e1-67ae-4c72-8184-c7534f3982c0",
+        "name": "Save Assessment Results",
+        "executeOnce": true,
+        "credentials": {
+          "supabaseApi": {
+            "id": "FTSugGkqwnuu6irz",
+            "name": "SupaStack"
+          }
+        }
+      },
+      {
+        "parameters": {
+          "operation": "update",
+          "tableId": "prospects",
+          "filters": {
+            "conditions": [
+              {
+                "keyName": "company_domain",
+                "condition": "eq",
+                "keyValue": "={{ $('Aggregate Raw Outputs').first().json.companyDomain }}"
+              }
+            ]
+          },
+          "fieldsUi": {
+            "fieldValues": [
+              {
+                "fieldId": "report_html",
+                "fieldValue": "={{ $input.all().find(i => i.json.reportHtml)?.json.reportHtml ?? \"\" }}"
+              },
+              {
+                "fieldId": "status",
+                "fieldValue": "completed"
+              },
+              {
+                "fieldId": "confidence_score",
+                "fieldValue": "={{ $('Aggregate Raw Outputs').first().json.overallScore }}"
+              },
+              {
+                "fieldId": "company_domain",
+                "fieldValue": "={{ $('Aggregate Raw Outputs').first().json.companyDomain }}"
+              },
+              {
+                "fieldId": "report_html_public",
+                "fieldValue": "={{ $input.all().find(i => i.json.reportHtmlPublic)?.json.reportHtmlPublic ?? \"\" }}"
+              }
+            ]
+          }
+        },
+        "type": "n8n-nodes-base.supabase",
+        "typeVersion": 1,
+        "position": [
+          -29232,
+          22752
+        ],
+        "id": "8868210d-77bd-42b7-999f-18f432c11f5a",
+        "name": "Update Prospect",
+        "executeOnce": true,
+        "credentials": {
+          "supabaseApi": {
+            "id": "FTSugGkqwnuu6irz",
+            "name": "SupaStack"
+          }
+        }
+      },
+      {
+        "parameters": {
+          "numberInputs": 6
+        },
+        "type": "n8n-nodes-base.merge",
+        "typeVersion": 3.2,
+        "position": [
+          -30480,
+          22592
+        ],
+        "id": "9149b953-b787-4f8d-9e64-4754070bcbde",
+        "name": "Merge"
+      },
+      {
+        "parameters": {
+          "method": "POST",
+          "url": "https://api.tavily.com/search",
+          "sendHeaders": true,
+          "headerParameters": {
+            "parameters": [
+              {
+                "name": "Content-Type",
+                "value": "application/json"
+              }
+            ]
+          },
+          "sendBody": true,
+          "bodyParameters": {
+            "parameters": [
+              {
+                "name": "api_key",
+                "value": "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"
+              },
+              {
+                "name": "query",
+                "value": "={{ $json.companyName }} competitors"
+              },
+              {
+                "name": "search_depth",
+                "value": "advanced"
+              },
+              {
+                "name": "max_results",
+                "value": "30"
+              },
+              {
+                "name": "include_answer",
+                "value": true
+              },
+              {
+                "name": "include_raw_content",
+                "value": false
+              }
+            ]
+          },
+          "options": {}
+        },
+        "id": "8ce2cadf-e3cf-496e-aa4c-212f2b3df961",
+        "name": "Tavily Search",
+        "type": "n8n-nodes-base.httpRequest",
+        "position": [
+          -31056,
+          22752
+        ],
+        "typeVersion": 3,
+        "executeOnce": false
+      },
+      {
+        "parameters": {
+          "model": "anthropic/claude-opus-4.5",
+          "options": {}
+        },
+        "type": "@n8n/n8n-nodes-langchain.lmChatOpenRouter",
+        "typeVersion": 1,
+        "position": [
+          -30128,
+          23008
+        ],
+        "id": "083453b3-dc31-4a12-8eac-72bd5a159179",
+        "name": "OpenRouter Chat Model",
+        "credentials": {
+          "openRouterApi": {
+            "id": "DPnbXJEN5OpXBJeM",
+            "name": "OpenRouter account"
+          }
+        }
+      },
+      {
+        "parameters": {
+          "operation": "get",
+          "tableId": "report_templates",
+          "filters": {
+            "conditions": [
+              {
+                "keyName": "is_active",
+                "keyValue": "={{ true }}"
+              },
+              {
+                "keyName": "slug",
+                "keyValue": "=report_2_strategic_assessment"
+              }
+            ]
+          }
+        },
+        "type": "n8n-nodes-base.supabase",
+        "typeVersion": 1,
+        "position": [
+          -30768,
+          22944
+        ],
+        "id": "8259ca38-26c5-4a5b-b64f-83cd0d33fca9",
+        "name": "Fetch Report Template",
+        "credentials": {
+          "supabaseApi": {
+            "id": "FTSugGkqwnuu6irz",
+            "name": "SupaStack"
+          }
+        }
+      },
+      {
+        "parameters": {
+          "promptType": "define",
+          "text": "=You are an expert report writer generating a complete HTML assessment report.\n\n## TEMPLATE TO FOLLOW\nYou MUST use this exact HTML template structure and CSS. Copy the CSS exactly. Follow the HTML structure exactly. Only change the CONTENT to be dynamic based on the company data. Also make sure there is class=\"blur-overlay-container\", never remove it and its inner elements and content whereever its added. Its purpose is to hide some information behind the CTA wall.  \n\n{{ $('Fetch Public Template').first().json.template_html }}\n\n## AVAILABLE COMPONENTS\n{{ JSON.stringify($('Fetch Public Template').first().json.available_components, null, 2) }}\n\n## SECTIONS TO INCLUDE\n{{ JSON.stringify($('Fetch Public Template').first().json.sections, null, 2) }}\n\n## AGENT INSTRUCTIONS\n{{ $('Fetch Public Template').first().json.agent_instructions }}\n\n---\n\n## COMPANY DATA\nCompany: {{ $json.companyName }}\nIndustry: {{ $json.industry }}\nOverall Score: {{ $json.overallScore }}/100\nMaturity Level: {{ $json.maturityLevel }}\nPlaybook Type: {{ $json.playbookType }}\nStage: {{ $json.stageNumber }}\nDimension Count: {{ $json.dimensionCount }}\nAverage Confidence: {{ $json.avgConfidence }}%\nMax Webscan Score: {{ $json.maxWebscanScore }}%\nReport Date: {{ $json.reportGeneratedAt }}\n\n## DIMENSION SCORES\n{{ JSON.stringify($json.formattedDimensions, null, 2) }}\n\n## TOP GAPS\n{{ JSON.stringify($json.topGaps, null, 2) }}\n\n## QUICK WINS\n{{ JSON.stringify($json.allQuickWins, null, 2) }}\n\n## AGENT OUTPUTS\n\n### Executive Summary:\n{{ $('Executive Summary Agent').first().json.output }}\n\n### Dimension Analysis:\n{{ JSON.stringify($('Dimension Analysis Agent').first().json.output, null, 2) }}\n\n### Roadmap:\n{{ JSON.stringify($('Roadmap Agent').first().json.output, null, 2) }}\n\n### Competitive Analysis:\n{{ JSON.stringify($('Competitive Analysis Agent').first().json.output, null, 2) }}\n\n---\n\nGenerate the complete HTML report now. Output ONLY the HTML, starting with <!DOCTYPE html>.",
+          "options": {}
+        },
+        "type": "@n8n/n8n-nodes-langchain.agent",
+        "typeVersion": 1.7,
+        "position": [
+          -30032,
+          22816
+        ],
+        "id": "99c38053-a7f2-464c-aaba-f26aa5ade29f",
+        "name": "Public Unification Agent"
+      },
+      {
+        "parameters": {
+          "jsCode": "// Parse HTML Output\nconst agentOutput = $('Public Unification Agent').first().json.output || '';\n\n// Clean up the output - remove any markdown code blocks if present\nlet html = agentOutput.trim();\nif (html.startsWith('```html')) {\n  html = html.replace(/^```html\\n?/, '').replace(/\\n?```$/, '');\n} else if (html.startsWith('```')) {\n  html = html.replace(/^```\\n?/, '').replace(/\\n?```$/, '');\n}\n\n// Validate it starts with DOCTYPE\nif (!html.toLowerCase().startsWith('<!doctype html>')) {\n  // Try to find the doctype\n  const doctypeIndex = html.toLowerCase().indexOf('<!doctype html>');\n  if (doctypeIndex > -1) {\n    html = html.substring(doctypeIndex);\n  } else {\n    throw new Error('Agent output does not contain valid HTML document');\n  }\n}\n\n// Validate it ends with </html>\nif (!html.toLowerCase().endsWith('</html>')) {\n  const htmlEndIndex = html.toLowerCase().lastIndexOf('</html>');\n  if (htmlEndIndex > -1) {\n    html = html.substring(0, htmlEndIndex + 7);\n  }\n}\n\nconst data = $input.first().json;\n\n/*return {\n  ...data,\n  reportHtmlPublic: html,\n  htmlLength: html.length,\n  generatedAt: new Date().toISOString()\n};*/\n \nreturn {\n \n  reportHtmlPublic: html\n \n};\n "
+        },
+        "type": "n8n-nodes-base.code",
+        "typeVersion": 2,
+        "position": [
+          -29680,
+          22816
+        ],
+        "id": "c6bded78-8d74-4151-af97-dc87463fab10",
+        "name": "Parse Public Output"
+      },
+      {
+        "parameters": {
+          "operation": "get",
+          "tableId": "report_templates",
+          "filters": {
+            "conditions": [
+              {
+                "keyName": "slug",
+                "keyValue": "report_obscure_strategic_assessment"
+              },
+              {
+                "keyName": "is_active",
+                "keyValue": "={{ true }}"
+              }
+            ]
+          }
+        },
+        "id": "6317dc88-0acf-4544-8e08-b4ea412ce9cc",
+        "name": "Fetch Public Template",
+        "type": "n8n-nodes-base.supabase",
+        "typeVersion": 1,
+        "position": [
+          -30768,
+          23136
+        ],
+        "credentials": {
+          "supabaseApi": {
+            "id": "FTSugGkqwnuu6irz",
+            "name": "SupaStack"
+          }
+        }
+      },
+      {
+        "parameters": {},
+        "type": "n8n-nodes-base.merge",
+        "typeVersion": 3.2,
+        "position": [
+          -29440,
+          22608
+        ],
+        "id": "b52b7bc5-6230-47e2-b661-7e957ca88799",
+        "name": "Mergereports"
+      },
+      {
+        "parameters": {
+          "model": "anthropic/claude-opus-4.5",
+          "options": {}
+        },
+        "type": "@n8n/n8n-nodes-langchain.lmChatOpenRouter",
+        "typeVersion": 1,
+        "position": [
+          -30032,
+          22656
+        ],
+        "id": "64db7991-de00-41c7-a88a-3e1e6dda44a2",
+        "name": "OpenRouter Chat Model1",
+        "credentials": {
+          "openRouterApi": {
+            "id": "DPnbXJEN5OpXBJeM",
+            "name": "OpenRouter account"
+          }
+        }
+      }
+    ],
+    "connections": {
+      "Webhook Trigger": {
+        "main": [
+          [
+            {
+              "node": "Fetch Assessment Version",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
+      },
+      "Fetch Assessment Version": {
+        "main": [
+          [
+            {
+              "node": "Fetch Assessment",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
+      },
+      "Fetch Assessment": {
+        "main": [
+          [
+            {
+              "node": "Fetch Organization",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
+      },
+      "Fetch Organization": {
+        "main": [
+          [
+            {
+              "node": "Fetch Company Profile",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
+      },
+      "Fetch Company Profile": {
+        "main": [
+          [
+            {
+              "node": "Fetch Dimension Analyses",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
+      },
+      "Fetch Dimension Analyses": {
+        "main": [
+          [
+            {
+              "node": "Consolidate All Data",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
+      },
+      "Consolidate All Data": {
+        "main": [
+          [
+            {
+              "node": "Calculate Scores",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
+      },
+      "Calculate Scores": {
+        "main": [
+          [
+            {
+              "node": "Executive Summary Agent",
+              "type": "main",
+              "index": 0
+            },
+            {
+              "node": "Dimension Analysis Agent",
+              "type": "main",
+              "index": 0
+            },
+            {
+              "node": "Roadmap Agent",
+              "type": "main",
+              "index": 0
+            },
+            {
+              "node": "Prepare Search Queries",
+              "type": "main",
+              "index": 0
+            },
+            {
+              "node": "Fetch Report Template",
+              "type": "main",
+              "index": 0
+            },
+            {
+              "node": "Fetch Public Template",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
+      },
+      "Claude Sonnet 4": {
+        "ai_languageModel": [
+          [
+            {
+              "node": "Executive Summary Agent",
+              "type": "ai_languageModel",
+              "index": 0
+            },
+            {
+              "node": "Dimension Analysis Agent",
+              "type": "ai_languageModel",
+              "index": 0
+            },
+            {
+              "node": "Roadmap Agent",
+              "type": "ai_languageModel",
+              "index": 0
+            },
+            {
+              "node": "Competitive Analysis Agent",
+              "type": "ai_languageModel",
+              "index": 0
+            }
+          ]
+        ]
+      },
+      "Prepare Search Queries": {
+        "main": [
+          [
+            {
+              "node": "Tavily Search",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
+      },
+      "Executive Summary Agent": {
+        "main": [
+          [
+            {
+              "node": "Merge",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
+      },
+      "Dimension Analysis Agent": {
+        "main": [
+          [
+            {
+              "node": "Merge",
+              "type": "main",
+              "index": 1
+            }
+          ]
+        ]
+      },
+      "Roadmap Agent": {
+        "main": [
+          [
+            {
+              "node": "Merge",
+              "type": "main",
+              "index": 2
+            }
+          ]
+        ]
+      },
+      "Competitive Analysis Agent": {
+        "main": [
+          [
+            {
+              "node": "Merge",
+              "type": "main",
+              "index": 3
+            }
+          ]
+        ]
+      },
+      "Aggregate Raw Outputs": {
+        "main": [
+          [
+            {
+              "node": "Unification Agent",
+              "type": "main",
+              "index": 0
+            },
+            {
+              "node": "Public Unification Agent",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
+      },
+      "Unification Agent": {
+        "main": [
+          [
+            {
+              "node": "Parse Unified Output",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
+      },
+      "Parse Unified Output": {
+        "main": [
+          [
+            {
+              "node": "Mergereports",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
+      },
+      "Tavily Search": {
+        "main": [
+          [
+            {
+              "node": "Competitive Analysis Agent",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
+      },
+      "Merge": {
+        "main": [
+          [
+            {
+              "node": "Aggregate Raw Outputs",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
+      },
+      "OpenRouter Chat Model": {
+        "ai_languageModel": [
+          [
+            {
+              "node": "Public Unification Agent",
+              "type": "ai_languageModel",
+              "index": 0
+            }
+          ]
+        ]
+      },
+      "Fetch Report Template": {
+        "main": [
+          [
+            {
+              "node": "Merge",
+              "type": "main",
+              "index": 4
+            }
+          ]
+        ]
+      },
+      "Public Unification Agent": {
+        "main": [
+          [
+            {
+              "node": "Parse Public Output",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
+      },
+      "Parse Public Output": {
+        "main": [
+          [
+            {
+              "node": "Mergereports",
+              "type": "main",
+              "index": 1
+            }
+          ]
+        ]
+      },
+      "Fetch Public Template": {
+        "main": [
+          [
+            {
+              "node": "Merge",
+              "type": "main",
+              "index": 5
+            }
+          ]
+        ]
+      },
+      "Update Prospect": {
+        "main": [
+          []
+        ]
+      },
+      "Mergereports": {
+        "main": [
+          [
+            {
+              "node": "Save Assessment Results",
+              "type": "main",
+              "index": 0
+            },
+            {
+              "node": "Update Prospect",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
+      },
+      "OpenRouter Chat Model1": {
+        "ai_languageModel": [
+          [
+            {
+              "node": "Unification Agent",
+              "type": "ai_languageModel",
+              "index": 0
+            }
+          ]
+        ]
+      }
+    },
+    "authors": "Laksh Agrawal",
+    "name": "Version 78b098e4",
+    "description": "",
+    "autosaved": false,
+    "workflowPublishHistory": [
+      {
+        "createdAt": "2026-02-10T23:02:49.835Z",
+        "id": 134,
+        "workflowId": "242d7QieSdQcAsfd",
+        "versionId": "78b098e4-a8e2-40e6-9f7b-1f23682789c4",
+        "event": "activated",
+        "userId": "ec164287-6cde-4606-b0c4-9d4cd30c3b98"
+      }
+    ]
+  }
+}
