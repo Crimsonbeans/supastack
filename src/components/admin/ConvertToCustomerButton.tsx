@@ -7,12 +7,12 @@ import { toast } from 'sonner'
 interface Prospect {
     id: string
     company_name: string
-    contact_name: string
-    contact_email: string
+    contact_name?: string | null
+    contact_email?: string | null
     status: string
-    report_html: string | null
-    qualified_at: string | null
-    organization_id?: string
+    report_html?: string | null
+    qualified_at?: string | null
+    organization_id?: string | null
 }
 
 interface ConvertToCustomerButtonProps {
@@ -92,6 +92,8 @@ function MultiProspectConversionDialog({
         account_manager: '',
         notes: ''
     })
+    const [autoGenerateReqs, setAutoGenerateReqs] = useState(true)
+    const [autoApproveReqs, setAutoApproveReqs] = useState(false)
 
     // Fetch all prospects from same organization
     useEffect(() => {
@@ -148,7 +150,9 @@ function MultiProspectConversionDialog({
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({
                     prospect_ids: Array.from(selectedProspectIds),
-                    contract_details: formData
+                    contract_details: formData,
+                    auto_generate_reqs: autoGenerateReqs,
+                    auto_approve_reqs: autoApproveReqs
                 })
             })
 
@@ -202,7 +206,7 @@ function MultiProspectConversionDialog({
                     ) : (
                         <div className="space-y-2 max-h-60 overflow-y-auto">
                             {orgProspects.map(p => {
-                                const canConvert = p.status === 'completed' && p.report_html
+                                const canConvert = (p.status === 'completed' || p.status === 'qualified') && p.report_html
                                 const isSelected = selectedProspectIds.has(p.id)
                                 const isInitial = p.id === initialProspect.id
 
@@ -291,6 +295,53 @@ function MultiProspectConversionDialog({
                             rows={3}
                             placeholder="Contract details, special terms, etc."
                         />
+                    </div>
+                </div>
+
+                {/* Phase 2 Requirement Generator */}
+                <div className="border border-indigo-200 bg-indigo-50/50 rounded-lg p-4 space-y-3">
+                    <h4 className="font-semibold text-sm text-indigo-900">Phase 2 Requirement Generator</h4>
+                    <div className="flex items-center gap-6">
+                        {/* Toggle 1: Auto Generate */}
+                        <label className="flex items-center gap-3 cursor-pointer">
+                            <button
+                                type="button"
+                                role="switch"
+                                aria-checked={autoGenerateReqs}
+                                onClick={() => {
+                                    const next = !autoGenerateReqs
+                                    setAutoGenerateReqs(next)
+                                    if (!next) setAutoApproveReqs(false)
+                                }}
+                                className={`relative inline-flex h-6 w-11 shrink-0 rounded-full border-2 border-transparent transition-colors duration-200 ${
+                                    autoGenerateReqs ? 'bg-indigo-600' : 'bg-slate-300'
+                                }`}
+                            >
+                                <span className={`pointer-events-none inline-block h-5 w-5 rounded-full bg-white shadow-sm transition-transform duration-200 ${
+                                    autoGenerateReqs ? 'translate-x-5' : 'translate-x-0'
+                                }`} />
+                            </button>
+                            <span className="text-xs font-medium text-slate-700">Auto Generate Requirement</span>
+                        </label>
+
+                        {/* Toggle 2: Auto Approve */}
+                        <label className={`flex items-center gap-3 ${autoGenerateReqs ? 'cursor-pointer' : 'cursor-not-allowed opacity-40'}`}>
+                            <button
+                                type="button"
+                                role="switch"
+                                aria-checked={autoApproveReqs}
+                                disabled={!autoGenerateReqs}
+                                onClick={() => setAutoApproveReqs(!autoApproveReqs)}
+                                className={`relative inline-flex h-6 w-11 shrink-0 rounded-full border-2 border-transparent transition-colors duration-200 ${
+                                    autoApproveReqs ? 'bg-indigo-600' : 'bg-slate-300'
+                                } ${!autoGenerateReqs ? 'cursor-not-allowed' : ''}`}
+                            >
+                                <span className={`pointer-events-none inline-block h-5 w-5 rounded-full bg-white shadow-sm transition-transform duration-200 ${
+                                    autoApproveReqs ? 'translate-x-5' : 'translate-x-0'
+                                }`} />
+                            </button>
+                            <span className="text-xs font-medium text-slate-700">Auto Approve for Customer</span>
+                        </label>
                     </div>
                 </div>
 

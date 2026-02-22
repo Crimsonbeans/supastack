@@ -267,7 +267,7 @@ export default function ClientDashboard({ loading, report, error, userData, user
     }
 
     // Report completed — render inline via iframe to isolate report CSS
-    if (report.status === 'completed' && report.report_html) {
+    if (['completed', 'qualified', 'converted_to_customer'].includes(report.status) && report.report_html) {
         return (
             <div className="w-full h-full">
                 <iframe

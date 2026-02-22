@@ -1,9 +1,9 @@
 'use client'
 
-import { useState, useEffect } from 'react'
-import { Calendar, Building, ChevronDown } from 'lucide-react'
-import { useSearchParams } from 'next/navigation'
-import CustomerExpandedRow from './CustomerExpandedRow'
+import { useState } from 'react'
+import { Calendar, Building, ChevronRight } from 'lucide-react'
+import { useRouter } from 'next/navigation'
+import CustomerProgress from './CustomerProgress'
 
 interface Customer {
     id: string
@@ -36,21 +36,10 @@ interface CustomersTableProps {
 }
 
 export default function CustomersTable({ customers }: CustomersTableProps) {
-    const searchParams = useSearchParams()
-    const [expandedId, setExpandedId] = useState<string | null>(null)
+    const router = useRouter()
     const [progressFilter, setProgressFilter] = useState<'all' | 'req_generated' | 'report1' | 'report2' | 'report3' | 'report4'>('all')
 
-    // Auto-expand from URL param (returning from report page)
-    useEffect(() => {
-        const expandId = searchParams.get('expand')
-        if (expandId) setExpandedId(expandId)
-    }, [searchParams])
-
-    const toggleExpand = (id: string) => {
-        setExpandedId(prev => prev === id ? null : id)
-    }
-
-    const filtered = customers.filter(c => {
+    const filtered = customers.filter(() => {
         // progressFilter will be used once phase 2 progress tracking is implemented
         return true
     })
@@ -97,7 +86,6 @@ export default function CustomersTable({ customers }: CustomersTableProps) {
                     <table className="w-full">
                         <thead className="bg-slate-50 border-b">
                             <tr>
-                                <th className="w-10 p-3" />
                                 <th className="text-left p-3 text-xs font-medium text-slate-600 uppercase tracking-wider">
                                     Company
                                 </th>
@@ -116,89 +104,69 @@ export default function CustomersTable({ customers }: CustomersTableProps) {
                                 <th className="text-left p-3 text-xs font-medium text-slate-600 uppercase tracking-wider">
                                     Status
                                 </th>
+                                <th className="w-10 p-3" />
                             </tr>
                         </thead>
                         <tbody className="divide-y divide-slate-100">
-                            {filtered.map(customer => {
-                                const isExpanded = expandedId === customer.id
-                                return (
-                                    <tr key={customer.id} className="contents">
-                                        <td colSpan={7} className="p-0">
-                                            {/* Row */}
-                                            <div
-                                                className={`grid cursor-pointer transition-colors ${
-                                                    isExpanded ? 'bg-indigo-50/50' : 'hover:bg-slate-50'
-                                                }`}
-                                                style={{ gridTemplateColumns: '40px 1fr 1fr 1fr 1fr 1fr 1fr' }}
-                                                onClick={() => toggleExpand(customer.id)}
-                                            >
-                                                <div className="p-3 flex items-center justify-center">
-                                                    <ChevronDown className={`w-4 h-4 text-slate-400 transition-transform duration-200 ${
-                                                        isExpanded ? 'rotate-180' : ''
-                                                    }`} />
-                                                </div>
-                                                <div className="p-3">
-                                                    <div className="font-medium text-sm text-slate-900">
-                                                        {customer.organization?.name || customer.prospect?.company_name || 'Unknown'}
-                                                    </div>
-                                                    <div className="text-xs text-slate-500">
-                                                        {customer.organization?.domain}
-                                                    </div>
-                                                </div>
-                                                <div className="p-3">
-                                                    <div className="text-sm text-slate-900">
-                                                        {customer.prospect?.contact_name || '—'}
-                                                    </div>
-                                                    <div className="text-xs text-slate-500">
-                                                        {customer.prospect?.contact_email || '—'}
-                                                    </div>
-                                                </div>
-                                                <div className="p-3">
-                                                    <div className="text-xs space-y-0.5">
-                                                        <div className="flex items-center gap-1 text-slate-600">
-                                                            <Calendar className="w-3 h-3" />
-                                                            {new Date(customer.contract_signed_at).toLocaleDateString()}
-                                                        </div>
-                                                        {customer.contract_type && (
-                                                            <div className="text-slate-500">
-                                                                {customer.contract_type.replace(/_/g, ' ')}
-                                                            </div>
-                                                        )}
-                                                    </div>
-                                                </div>
-                                                <div className="p-3 flex items-center">
-                                                    <span className="inline-flex items-center text-xs px-2 py-1 rounded-full font-medium bg-indigo-100 text-indigo-700">
-                                                        Phase 1 Complete
-                                                    </span>
-                                                </div>
-                                                <div className="p-3 flex items-center">
-                                                    <div className="text-sm text-slate-600">
-                                                        {customer.account_manager || '—'}
-                                                    </div>
-                                                </div>
-                                                <div className="p-3 flex items-center">
-                                                    <span className={`inline-flex items-center text-xs px-2 py-1 rounded-full font-medium ${
-                                                        customer.status === 'active'
-                                                            ? 'bg-green-100 text-green-700'
-                                                            : customer.status === 'churned'
-                                                            ? 'bg-red-100 text-red-700'
-                                                            : 'bg-yellow-100 text-yellow-700'
-                                                    }`}>
-                                                        {customer.status}
-                                                    </span>
-                                                </div>
+                            {filtered.map(customer => (
+                                <tr
+                                    key={customer.id}
+                                    className="hover:bg-slate-50 cursor-pointer transition-colors group"
+                                    onClick={() => router.push(`/admin/customers/${customer.id}`)}
+                                >
+                                    <td className="p-3">
+                                        <div className="font-medium text-sm text-slate-900">
+                                            {customer.organization?.name || customer.prospect?.company_name || 'Unknown'}
+                                        </div>
+                                        <div className="text-xs text-slate-500">
+                                            {customer.organization?.domain}
+                                        </div>
+                                    </td>
+                                    <td className="p-3">
+                                        <div className="text-sm text-slate-900">
+                                            {customer.prospect?.contact_name || '—'}
+                                        </div>
+                                        <div className="text-xs text-slate-500">
+                                            {customer.prospect?.contact_email || '—'}
+                                        </div>
+                                    </td>
+                                    <td className="p-3">
+                                        <div className="text-xs space-y-0.5">
+                                            <div className="flex items-center gap-1 text-slate-600">
+                                                <Calendar className="w-3 h-3" />
+                                                {new Date(customer.contract_signed_at).toLocaleDateString()}
                                             </div>
-
-                                            {/* Expanded Section */}
-                                            {isExpanded && (
-                                                <div className="border-t border-slate-200">
-                                                    <CustomerExpandedRow customerId={customer.id} />
+                                            {customer.contract_type && (
+                                                <div className="text-slate-500">
+                                                    {customer.contract_type.replace(/_/g, ' ')}
                                                 </div>
                                             )}
-                                        </td>
-                                    </tr>
-                                )
-                            })}
+                                        </div>
+                                    </td>
+                                    <td className="p-3">
+                                        <CustomerProgress customerId={customer.id} />
+                                    </td>
+                                    <td className="p-3">
+                                        <div className="text-sm text-slate-600">
+                                            {customer.account_manager || '—'}
+                                        </div>
+                                    </td>
+                                    <td className="p-3">
+                                        <span className={`inline-flex items-center text-xs px-2 py-1 rounded-full font-medium ${
+                                            customer.status === 'active'
+                                                ? 'bg-green-100 text-green-700'
+                                                : customer.status === 'churned'
+                                                ? 'bg-red-100 text-red-700'
+                                                : 'bg-yellow-100 text-yellow-700'
+                                        }`}>
+                                            {customer.status}
+                                        </span>
+                                    </td>
+                                    <td className="p-3">
+                                        <ChevronRight className="w-4 h-4 text-slate-300 group-hover:text-slate-500 transition-colors" />
+                                    </td>
+                                </tr>
+                            ))}
                         </tbody>
                     </table>
                 </div>

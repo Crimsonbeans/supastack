@@ -48,11 +48,10 @@ function Sidebar({ isOpen, setIsOpen, collapsed, setCollapsed, adminName }: Side
                 />
             )}
 
-            {/* Sidebar - Bento Style */}
-            <aside
+            {/* Sidebar wrapper — relative so drawer handle is not clipped */}
+            <div
                 className={cn(
                     "fixed top-0 bottom-0 z-50 transition-all duration-300 md:translate-x-0 md:static md:relative",
-                    "bg-[hsl(var(--sidebar-background))] text-white border-r border-white/5",
                     isOpen ? "translate-x-0" : "-translate-x-full",
                     "w-64 md:w-64",
                     collapsed && "md:w-16"
@@ -61,7 +60,7 @@ function Sidebar({ isOpen, setIsOpen, collapsed, setCollapsed, adminName }: Side
                 {/* Drawer handle — edge toggle (desktop only) */}
                 <button
                     onClick={() => setCollapsed(!collapsed)}
-                    className="hidden md:flex absolute top-1/2 -right-3.5 -translate-y-1/2 z-50 w-7 h-12 flex-col items-center justify-center gap-[3px] bg-[hsl(var(--sidebar-background))] border border-white/10 border-l-0 rounded-r-lg cursor-pointer hover:bg-white/10 transition-colors group"
+                    className="hidden md:flex absolute top-1/2 -right-3.5 -translate-y-1/2 z-[60] w-7 h-12 flex-col items-center justify-center gap-[3px] bg-[hsl(var(--sidebar-background))] border border-white/10 border-l-0 rounded-r-lg cursor-pointer hover:bg-white/10 transition-colors group"
                     title={collapsed ? 'Expand sidebar' : 'Collapse sidebar'}
                 >
                     <span className="w-1 h-1 rounded-full bg-blue-200/30 group-hover:bg-blue-200/60 transition-colors" />
@@ -77,6 +76,7 @@ function Sidebar({ isOpen, setIsOpen, collapsed, setCollapsed, adminName }: Side
                     <span className="w-1 h-1 rounded-full bg-blue-200/30 group-hover:bg-blue-200/60 transition-colors" />
                 </button>
 
+                <aside className="h-full bg-[hsl(var(--sidebar-background))] text-white border-r border-white/5 overflow-y-auto">
                 <div className="h-full flex flex-col">
                     {/* Logo */}
                     <div className="h-16 flex items-center border-b border-white/10 px-4">
@@ -102,7 +102,7 @@ function Sidebar({ isOpen, setIsOpen, collapsed, setCollapsed, adminName }: Side
                     {/* Navigation */}
                     <nav className="flex-1 py-6 px-2 space-y-1">
                         {navItems.map((item) => {
-                            const isActive = pathname === item.href
+                            const isActive = pathname === item.href || (item.href !== '/admin' && pathname.startsWith(item.href + '/'))
                             return (
                                 <Link
                                     key={item.name}
@@ -172,7 +172,8 @@ function Sidebar({ isOpen, setIsOpen, collapsed, setCollapsed, adminName }: Side
                         </button>
                     </div>
                 </div>
-            </aside>
+                </aside>
+            </div>
         </>
     )
 }
@@ -182,8 +183,8 @@ export default function AdminLayoutContent({ children, adminName }: { children: 
     const [sidebarOpen, setSidebarOpen] = useState(false)
     const [sidebarCollapsed, setSidebarCollapsed] = useState(true)
 
-    // Full-screen mode for report pages (no sidebar, no padding)
-    const isFullScreen = pathname.includes('/report')
+    // Full-screen mode: report pages AND customer detail pages (they manage their own layout)
+    const isFullScreen = pathname.includes('/report') || /^\/admin\/customers\/[^/]+$/.test(pathname)
 
     if (isFullScreen) {
         return <>{children}</>

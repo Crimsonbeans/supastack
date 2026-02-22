@@ -6,6 +6,7 @@ import { usePathname } from 'next/navigation'
 import {
     LayoutDashboard,
     FileText,
+    ClipboardList,
     User,
     LogOut,
     Menu
@@ -31,6 +32,7 @@ function Sidebar({ isOpen, setIsOpen, collapsed, setCollapsed, userEmail, userNa
     const navItems = [
         { name: 'Dashboard', href: '/dashboard', icon: LayoutDashboard },
         { name: 'Webscan GTM Report', href: '/dashboard/report', icon: FileText },
+        { name: 'Requirements', href: '/dashboard/requirements', icon: ClipboardList },
     ]
 
     const handleLogout = async () => {

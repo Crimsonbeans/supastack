@@ -11,7 +11,8 @@
       "parameters": {
         "httpMethod": "POST",
         "path": "512cf2e3-db3f-4277-9017-7a95b5b49add",
-        "options": {}
+        "options": {},
+        "responseMode": "responseNode"
       },
       "type": "n8n-nodes-base.webhook",
       "typeVersion": 2,
@@ -82,13 +83,14 @@
     },
     {
       "parameters": {
-        "operation": "get",
+        "operation": "getAll",
         "tableId": "dimension_analyses",
         "filters": {
           "conditions": [
             {
               "keyName": "version_id",
-              "keyValue": "={{ $json.id }}"
+              "keyValue": "={{ $json.id }}",
+              "condition": "eq"
             }
           ]
         }
@@ -457,6 +459,110 @@
       ],
       "id": "f8177176-c431-4a9a-a704-9e73ad06f552",
       "name": "Merge"
+    },
+    {
+      "parameters": {},
+      "type": "n8n-nodes-base.errorTrigger",
+      "typeVersion": 1,
+      "position": [
+        1184,
+        560
+      ],
+      "id": "e5f6g7h8-i9j0-1234-abcd-errortrig001",
+      "name": "Error Trigger"
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "https://api.resend.com/emails",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "Authorization",
+              "value": "Bearer re_4zVSjxhn_KESD8eP5fgDmy4bdBKALHiKm"
+            }
+          ]
+        },
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "{\"from\":\"SupaStack <donotreply@artificialiq.tech>\",\"to\":[\"ankit@crimsonbeans.com\"],\"subject\":\"={{ \\\"Phase 2 Requirements Generated — \\\" + $('Fetch Company Profile').first().json.company_name }}\",\"html\":\"={{ \\\"<h2>Requirements Generation Complete</h2><p>The AI has finished analyzing dimensions and generating Phase 2 requirements for <strong>\\\" + $('Fetch Company Profile').first().json.company_name + \\\"</strong>.</p><ul><li><strong>\\\" + $('Insert Questions').all().length + \\\"</strong> discovery questions generated</li></ul><p>Login to the admin panel to review and share with the customer.</p>\\\" }}\"}",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4,
+      "position": [
+        1408,
+        288
+      ],
+      "id": "email-node-001",
+      "name": "Send Admin Email"
+    },
+    {
+      "parameters": {
+        "operation": "get",
+        "tableId": "workflow_executions",
+        "filters": {
+          "conditions": [
+            {
+              "keyName": "status",
+              "keyValue": "running"
+            },
+            {
+              "keyName": "workflow_type",
+              "keyValue": "phase2_requirements"
+            }
+          ]
+        }
+      },
+      "type": "n8n-nodes-base.supabase",
+      "typeVersion": 1,
+      "position": [
+        1408,
+        560
+      ],
+      "id": "error-find-exec-001",
+      "name": "Find Running Execution",
+      "credentials": {
+        "supabaseApi": {
+          "id": "FTSugGkqwnuu6irz",
+          "name": "SupaStack"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "jsCode": "\nconst errorTrigger = $('Error Trigger').first().json;\nconst runningRecord = $input.first().json;\n\nconst errorMessage = errorTrigger.execution?.error?.message || 'Unknown workflow error';\nconst errorNode = errorTrigger.execution?.error?.node?.name || errorTrigger.execution?.lastNodeExecuted || 'Unknown';\n\nreturn [{\n  json: {\n    id: runningRecord.id,\n    status: 'failed',\n    error_message: errorMessage,\n    error_details: JSON.stringify({ node: errorNode, raw_error: errorMessage }),\n    completed_at: new Date().toISOString()\n  }\n}];\n"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        1632,
+        560
+      ],
+      "id": "error-prepare-001",
+      "name": "Prepare Error Data"
+    },
+    {
+      "parameters": {
+        "operation": "update",
+        "tableId": "workflow_executions",
+        "matchingColumn": "id"
+      },
+      "type": "n8n-nodes-base.supabase",
+      "typeVersion": 1,
+      "position": [
+        1856,
+        560
+      ],
+      "id": "error-update-001",
+      "name": "Update Execution Failed",
+      "credentials": {
+        "supabaseApi": {
+          "id": "FTSugGkqwnuu6irz",
+          "name": "SupaStack"
+        }
+      }
     }
   ],
   "connections": {
@@ -645,6 +751,50 @@
         [
           {
             "node": "Prepare Context",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Respond": {
+      "main": [
+        [
+          {
+            "node": "Send Admin Email",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Error Trigger": {
+      "main": [
+        [
+          {
+            "node": "Find Running Execution",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Find Running Execution": {
+      "main": [
+        [
+          {
+            "node": "Prepare Error Data",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Prepare Error Data": {
+      "main": [
+        [
+          {
+            "node": "Update Execution Failed",
             "type": "main",
             "index": 0
           }
