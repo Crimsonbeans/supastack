@@ -1,0 +1,612 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1"/>
+  <title>How It Works — SupaStack</title>
+  <meta name="description" content="Four steps on the landing page. Here's what actually happens — from free web scan to governed execution."/>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@100;200;300;400;500;600;700;800;900&display=swap" rel="stylesheet">
+  <script src="https://cdn.tailwindcss.com"></script>
+  <style>
+    body { font-family: 'Inter', sans-serif; -webkit-font-smoothing: antialiased; }
+    @keyframes ss-float { 0%,100% { transform: translateY(0) rotate(0deg); } 33% { transform: translateY(-30px) rotate(5deg); } 66% { transform: translateY(15px) rotate(-3deg); } }
+    @keyframes ss-float-rev { 0%,100% { transform: translateY(0) rotate(0deg); } 33% { transform: translateY(20px) rotate(-4deg); } 66% { transform: translateY(-25px) rotate(6deg); } }
+    @keyframes ss-grad { 0%,100% { background-position: 0% 50%; } 50% { background-position: 100% 50%; } }
+    .fade-up { opacity: 0; transform: translateY(40px); filter: blur(8px); transition: opacity 0.7s ease, transform 0.7s ease, filter 0.7s ease; }
+    .fade-up.visible { opacity: 1; transform: translateY(0); filter: blur(0); }
+    .fade-up-d1 { transition-delay: 0.1s; }
+    .fade-up-d2 { transition-delay: 0.2s; }
+    .fade-up-d3 { transition-delay: 0.3s; }
+    .card-hover { position: relative; }
+    .card-hover::before { content: ''; position: absolute; inset: -1px; border-radius: 1.5rem; background: linear-gradient(135deg, #1d4ed8, #2563eb, #0284c7); opacity: 0; transition: opacity 0.5s ease; filter: blur(2px); z-index: 0; }
+    .card-hover:hover::before { opacity: 1; }
+    .card-hover > * { position: relative; z-index: 1; }
+    header.scrolled { background: rgba(255,255,255,0.95); backdrop-filter: blur(12px); box-shadow: 0 1px 0 rgba(0,0,0,0.06); }
+  
+    @keyframes ss-float-slow { 0%,100% { transform: translateY(0); } 50% { transform: translateY(-20px); } }
+    @keyframes ss-shimmer { 0% { background-position: 0% center; } 100% { background-position: -200% center; } }
+    @keyframes ss-pulse { 0% { opacity: 0.8; transform: scale(1); } 100% { opacity: 0; transform: scale(1.8); } }
+    @keyframes ss-scan { 0%,100% { transform: translateY(-100%); } 50% { transform: translateY(100%); } }
+    @keyframes ss-rotate { from { transform: rotate(0deg); } to { transform: rotate(360deg); } }
+    @keyframes ss-grid { 0%,100% { opacity: 0.3; } 50% { opacity: 0.6; } }
+    .shimmer-text { background-size: 200% 100%; animation: ss-shimmer 4s linear infinite; }
+  
+/* 4-Phase Accordion */
+  .phase-accordion {
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+    max-width: 800px;
+    margin: 0 auto;
+  }
+  .phase-item {
+    border: 1px solid rgba(255,255,255,0.07);
+    border-radius: 14px;
+    background: rgba(255,255,255,0.025);
+    overflow: hidden;
+    transition: border-color 0.3s ease, background 0.3s ease;
+  }
+  .phase-item.is-open {
+    border-color: rgba(29,78,216,0.35);
+    background: rgba(29,78,216,0.06);
+  }
+  .phase-item.is-open.phase-sky {
+    border-color: rgba(14,165,233,0.3);
+    background: rgba(14,165,233,0.05);
+  }
+  .phase-btn {
+    display: flex;
+    align-items: center;
+    gap: 14px;
+    width: 100%;
+    padding: 20px 24px;
+    cursor: pointer;
+    background: transparent;
+    border: none;
+    color: inherit;
+    text-align: left;
+  }
+  .phase-btn:hover { background: rgba(255,255,255,0.02); }
+  .phase-num {
+    width: 40px;
+    height: 40px;
+    border-radius: 50%;
+    background: linear-gradient(135deg, #1e40af, #2563eb);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-weight: 700;
+    font-size: 0.82rem;
+    color: #fff;
+    flex-shrink: 0;
+    box-shadow: 0 4px 14px rgba(29,78,216,0.3);
+  }
+  .phase-num--sky {
+    background: linear-gradient(135deg, #1d4ed8, #0ea5e9);
+    box-shadow: 0 4px 14px rgba(14,165,233,0.25);
+  }
+  .phase-tag {
+    font-size: 0.62rem;
+    font-weight: 700;
+    letter-spacing: 0.12em;
+    text-transform: uppercase;
+    padding: 4px 10px;
+    border-radius: 20px;
+    border: 1px solid rgba(29,78,216,0.3);
+    background: rgba(29,78,216,0.12);
+    color: #93c5fd;
+    flex-shrink: 0;
+  }
+  .phase-tag--sky {
+    border-color: rgba(14,165,233,0.3);
+    background: rgba(14,165,233,0.1);
+    color: #7dd3fc;
+  }
+  .phase-btn-label {
+    font-size: 0.92rem;
+    font-weight: 500;
+    color: rgba(148,163,184,0.7);
+    flex: 1;
+    transition: color 0.2s ease;
+  }
+  .phase-item.is-open .phase-btn-label { color: rgba(226,232,240,0.5); }
+  .phase-chevron {
+    margin-left: auto;
+    flex-shrink: 0;
+    width: 18px;
+    height: 18px;
+    color: rgba(148,163,184,0.5);
+    transition: transform 0.35s ease, color 0.2s ease;
+  }
+  .phase-item.is-open .phase-chevron {
+    transform: rotate(180deg);
+    color: #93c5fd;
+  }
+  .phase-item.is-open.phase-sky .phase-chevron { color: #7dd3fc; }
+  .phase-body {
+    max-height: 0;
+    overflow: hidden;
+    transition: max-height 0.45s cubic-bezier(0.4,0,0.2,1);
+  }
+  .phase-body-inner {
+    padding: 0 24px 28px 78px;
+  }
+  .phase-body-title {
+    font-size: 1.25rem;
+    font-weight: 700;
+    color: #fff;
+    line-height: 1.3;
+    margin-bottom: 12px;
+    letter-spacing: -0.01em;
+  }
+  .phase-body-desc {
+    font-size: 0.95rem;
+    color: #94a3b8;
+    line-height: 1.65;
+  }
+  @media (max-width: 600px) {
+    .phase-btn { padding: 18px 18px; gap: 12px; }
+    .phase-body-inner { padding: 0 18px 24px 18px; }
+    .phase-btn-label { display: none; }
+  }
+  
+/* ── Alternatives Section ── */
+  :root {
+    --alt-card-bg: #ffffff;
+    --alt-card-border: #e2e4e9;
+    --alt-card-dark-bg: #0c0c1a;
+    --alt-card-dark-border: rgba(29, 78, 216, 0.3);
+    --alt-text-primary: #1a1d27;
+    --alt-text-secondary: #5a5f72;
+    --alt-text-muted: #8b90a0;
+    --alt-text-muted-dark: #94a3b8;
+    --alt-accent-blue: #2563eb;
+    --alt-accent-green: #34d399;
+    --alt-accent-red: #f87171;
+  }
+  .alternatives-stack {
+    display: flex;
+    flex-direction: column;
+    gap: 16px;
+    margin-bottom: 40px;
+  }
+  .alt-card {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    align-items: center;
+    gap: 24px;
+    border-radius: 16px;
+    padding: 32px 36px;
+  }
+  .alt-card--light {
+    background: var(--alt-card-bg);
+    border: 1px solid var(--alt-card-border);
+    border-left: 3px solid var(--alt-accent-red);
+  }
+  .alt-card--dark {
+    background: var(--alt-card-dark-bg);
+    border: 1px solid var(--alt-card-dark-border);
+    border-left: 3px solid var(--alt-accent-green);
+    position: relative;
+    overflow: hidden;
+  }
+  .alt-card--dark::before {
+    content: '';
+    position: absolute;
+    top: 0; left: 0; right: 0;
+    height: 2px;
+    background: linear-gradient(90deg, transparent, var(--alt-accent-blue), transparent);
+  }
+  .alt-label {
+    font-size: 0.65rem;
+    font-weight: 600;
+    letter-spacing: 0.12em;
+    text-transform: uppercase;
+    margin-bottom: 8px;
+  }
+  .alt-card--light .alt-label { color: var(--alt-text-muted); }
+  .alt-card--dark  .alt-label { color: var(--alt-accent-blue); }
+  .alt-title {
+    font-size: 1.25rem;
+    font-weight: 700;
+    letter-spacing: -0.01em;
+    line-height: 1.3;
+  }
+  .alt-card--light .alt-title { color: var(--alt-text-primary); }
+  .alt-card--dark  .alt-title { color: #fff; }
+  .alt-details {
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+  }
+  .alt-detail {
+    font-size: 0.88rem;
+    line-height: 1.5;
+  }
+  .alt-card--light .alt-detail { color: var(--alt-text-secondary); }
+  .alt-card--dark  .alt-detail { color: var(--alt-text-muted-dark); }
+  .alt-card--light .alt-detail strong { color: var(--alt-text-primary); font-weight: 600; }
+  .alt-card--dark  .alt-detail strong { color: #fff; font-weight: 600; }
+  .alt-risk-note {
+    font-size: 0.82rem;
+    font-style: italic;
+    line-height: 1.45;
+    margin-top: 6px;
+  }
+  .alt-risk-note--red   { color: var(--alt-accent-red);   opacity: 0.9; }
+  .alt-risk-note--green { color: #93c5fd;                  opacity: 0.9; }
+  .alt-footer-note {
+    text-align: center;
+    font-size: 0.95rem;
+    color: var(--alt-text-secondary);
+    line-height: 1.6;
+    max-width: 640px;
+    margin: 0 auto;
+  }
+  @media (max-width: 640px) {
+    .alt-card {
+      grid-template-columns: 1fr;
+      gap: 20px;
+      padding: 24px 20px;
+    }
+  }
+  </style>
+</head>
+<body class="bg-white text-slate-900 selection:bg-blue-500/30">
+
+<!-- NAV -->
+<header id="site-header" class="fixed top-0 left-0 right-0 z-50 transition-all duration-500 py-5 bg-white/95 backdrop-blur-sm shadow-sm">
+  <div class="container mx-auto px-4 md:px-6 flex items-center justify-between">
+    <a href="index.html" class="text-2xl font-bold tracking-tighter text-slate-900">SupaStack</a>
+    <nav class="hidden md:block">
+      <ul class="flex items-center gap-8 text-sm font-medium text-slate-500">
+        <li><a href="how-it-works.html" class="text-slate-900 font-semibold">How It Works</a></li>
+        <li><a href="pricing.html" class="hover:text-slate-900 transition-colors duration-300">Pricing</a></li>
+        <li><a href="about.html" class="hover:text-slate-900 transition-colors duration-300">About</a></li>
+      </ul>
+    </nav>
+    <div class="flex items-center gap-4">
+      <a href="/login" class="hidden md:inline-flex text-sm font-medium text-slate-500 hover:text-slate-900 transition-colors duration-300">Sign In</a>
+      <a href="/signup" class="hidden md:inline-flex items-center h-9 px-5 rounded-lg text-sm font-semibold bg-gradient-to-r from-blue-800 to-blue-600 text-white hover:shadow-lg hover:shadow-blue-700/25 transition-all duration-300">Get Free Scan</a>
+      <button class="md:hidden p-2 text-slate-600" onclick="document.getElementById('mobile-menu').classList.toggle('hidden')">
+        <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" viewBox="0 0 24 24"><path d="M4 5h16M4 12h16M4 19h16"/></svg>
+      </button>
+    </div>
+  </div>
+  <div id="mobile-menu" class="hidden md:hidden bg-white border-t border-slate-100 px-4 py-4 space-y-3 text-sm font-medium">
+    <a href="how-it-works.html" class="block text-blue-700 font-semibold">How It Works</a>
+    <a href="pricing.html" class="block text-slate-600 hover:text-slate-900">Pricing</a>
+    <a href="about.html" class="block text-slate-600 hover:text-slate-900">About</a>
+    <a href="/signup" class="block text-blue-700 font-semibold">Get Free Scan →</a>
+  </div>
+</header>
+
+<!-- PAGE HERO -->
+<section class="relative pt-36 pb-20 md:pt-44 md:pb-28 overflow-hidden bg-gradient-to-br from-slate-50 via-white to-blue-50/40">
+  <div class="absolute inset-0 overflow-hidden pointer-events-none">
+    <div style="top:-5%;right:5%;background:radial-gradient(circle,#bfdbfe,transparent 70%);animation:ss-float 20s ease-in-out infinite;will-change:transform" class="absolute w-[500px] h-[500px] rounded-full blur-[120px] opacity-25"></div>
+    <div style="bottom:0%;left:10%;background:radial-gradient(circle,#93c5fd,transparent 70%);animation:ss-float-rev 25s ease-in-out infinite;will-change:transform" class="absolute w-[400px] h-[400px] rounded-full blur-[100px] opacity-20"></div>
+      <div style="bottom:-5%;left:35%;background:radial-gradient(circle,#bae6fd,transparent 70%);animation:ss-float-slow 30s ease-in-out infinite;will-change:transform" class="absolute w-[400px] h-[400px] rounded-full blur-[100px] opacity-20"></div>
+  </div>
+  <div style="background-image:linear-gradient(rgba(29,78,216,.08) 1px,transparent 1px),linear-gradient(90deg,rgba(29,78,216,.08) 1px,transparent 1px);background-size:60px 60px" class="absolute inset-0 opacity-[0.035]"></div>
+  <div class="container mx-auto px-4 md:px-6 text-center relative z-10 max-w-4xl">
+    <div class="fade-up">
+      <span class="inline-flex items-center px-4 py-2 rounded-full bg-blue-50 border border-blue-200 text-blue-700 text-xs font-semibold tracking-widest uppercase mb-6">How It Works</span>
+    </div>
+    <div class="fade-up fade-up-d1">
+      <h1 class="text-4xl sm:text-5xl md:text-6xl font-bold tracking-tight text-slate-900 leading-[1.1] mb-6"><span class="text-transparent bg-clip-text bg-gradient-to-r from-blue-800 to-blue-600 shimmer-text">Here's What Actually Happens.</span></h1>
+    </div>
+    <div class="fade-up fade-up-d2">
+      <p class="text-xl text-slate-500 leading-relaxed max-w-2xl mx-auto">It starts with a free web scan. If you like what you see, you're into a structured programme that gives your team everything they need to execute — in one month.</p>
+    </div>
+  </div>
+</section>
+
+<!-- THE ALTERNATIVES -->
+<div class="h-px bg-gradient-to-r from-transparent via-blue-700/20 to-transparent"></div>
+<section class="py-20 md:py-28 bg-[#f8f8fa] relative overflow-hidden">
+  <div class="container mx-auto px-4 md:px-6">
+    <div style="max-width:820px;margin:0 auto">
+
+      <div class="text-center mb-12 fade-up">
+        <h2 class="text-4xl md:text-5xl font-bold text-slate-900 mb-4" style="letter-spacing:-0.02em">The Alternatives</h2>
+        <p class="text-xl text-slate-500">You have three real options. Here&#8217;s what each one actually costs.</p>
+      </div>
+
+      <div class="alternatives-stack">
+
+        <!-- Option 1: Senior Hire -->
+        <div class="alt-card alt-card--light">
+          <div class="alt-identity">
+            <div class="alt-label">Hire a Sales Ops Leader</div>
+            <div class="alt-title">Full-time senior hire</div>
+          </div>
+          <div class="alt-details">
+            <div class="alt-detail"><strong>Timeline:</strong> 90+ days to find &amp; onboard</div>
+            <div class="alt-detail"><strong>Cost:</strong> £8–12k salary + execution budget</div>
+            <div class="alt-risk-note alt-risk-note--red">Wrong hire = 6 months wasted</div>
+          </div>
+        </div>
+
+        <!-- Option 2: Tool-by-tool -->
+        <div class="alt-card alt-card--light">
+          <div class="alt-identity">
+            <div class="alt-label">Fix Things One at a Time</div>
+            <div class="alt-title">Tool-by-tool projects</div>
+          </div>
+          <div class="alt-details">
+            <div class="alt-detail"><strong>Timeline:</strong> Starts fast, problems emerge later</div>
+            <div class="alt-detail"><strong>Cost:</strong> £20–50k per project</div>
+            <div class="alt-risk-note alt-risk-note--red">90% of AI projects fail this way</div>
+          </div>
+        </div>
+
+        <!-- Option 3: Supastack -->
+        <div class="alt-card alt-card--dark">
+          <div class="alt-identity">
+            <div class="alt-label">Supastack</div>
+            <div class="alt-title">AI diagnostic + expert GTM consultant</div>
+          </div>
+          <div class="alt-details">
+            <div class="alt-detail"><strong>Timeline:</strong> 6 weeks to plan, then build with support</div>
+            <div class="alt-detail"><strong>Cost:</strong> £10–12.5k/month all-in</div>
+            <div class="alt-risk-note alt-risk-note--green">Low risk &#8212; monthly, stop anytime</div>
+          </div>
+        </div>
+
+      </div>
+
+      <p class="alt-footer-note fade-up">You get: the thinking of a senior operations leader, AI-powered analysis, and the flexibility to stop if it&#8217;s not working.</p>
+
+    </div>
+  </div>
+</section>
+
+<!-- WEB SCAN ENTRY POINT -->
+<div class="h-px bg-gradient-to-r from-transparent via-blue-700/20 to-transparent"></div>
+<section class="py-24 md:py-36 bg-[#f8f8fa] relative overflow-hidden">
+  <div class="container mx-auto px-4 md:px-6">
+    <div class="max-w-4xl mx-auto grid md:grid-cols-2 gap-16 items-center">
+      <div class="fade-up">
+        <span class="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-emerald-50 border border-emerald-100 text-emerald-700 text-xs font-semibold tracking-wider uppercase mb-6">
+          <span class="w-1.5 h-1.5 rounded-full bg-emerald-500"></span> Free · 48 hours · No data access required
+        </span>
+        <h2 class="text-4xl md:text-5xl font-bold text-slate-900 mb-6">Start With a Free Web Scan</h2>
+        <p class="text-lg text-slate-500 leading-relaxed mb-8">Our AI analyses publicly available signals about your company — website, job postings, tech stack indicators, social presence, competitor positioning, and market signals — across all dimensions of readiness.</p>
+        <a href="/signup" class="inline-flex items-center justify-center h-14 px-8 rounded-xl bg-gradient-to-r from-blue-800 to-blue-600 text-white font-semibold shadow-lg shadow-blue-700/25 hover:shadow-blue-700/40 transition-shadow duration-300">
+          Get Your Free Web Scan →
+        </a>
+      </div>
+      <div class="fade-up fade-up-d1 space-y-4">
+        <p class="text-xs font-bold text-slate-400 uppercase tracking-[0.15em] mb-6">What you get</p>
+        <div class="flex items-start gap-4 p-5 bg-white rounded-2xl border border-slate-100 shadow-sm">
+          <div class="w-8 h-8 rounded-lg bg-blue-50 flex items-center justify-center shrink-0"><span class="text-blue-700 text-sm font-bold">✓</span></div>
+          <div><p class="font-semibold text-slate-900 mb-1">Readiness score (1–100)</p><p class="text-sm text-slate-500">With full dimension breakdown across every assessed area.</p></div>
+        </div>
+        <div class="flex items-start gap-4 p-5 bg-white rounded-2xl border border-slate-100 shadow-sm">
+          <div class="w-8 h-8 rounded-lg bg-blue-50 flex items-center justify-center shrink-0"><span class="text-blue-700 text-sm font-bold">✓</span></div>
+          <div><p class="font-semibold text-slate-900 mb-1">Competitive benchmarking</p><p class="text-sm text-slate-500">Your position vs. 5 peer companies in your market.</p></div>
+        </div>
+        <div class="flex items-start gap-4 p-5 bg-white rounded-2xl border border-slate-100 shadow-sm">
+          <div class="w-8 h-8 rounded-lg bg-blue-50 flex items-center justify-center shrink-0"><span class="text-blue-700 text-sm font-bold">✓</span></div>
+          <div><p class="font-semibold text-slate-900 mb-1">Top 3 Initiatives</p><p class="text-sm text-slate-500">With estimated impact — so you can prioritise before committing budget.</p></div>
+        </div>
+        <div class="flex items-start gap-4 p-5 bg-white rounded-2xl border border-slate-100 shadow-sm">
+          <div class="w-8 h-8 rounded-lg bg-blue-50 flex items-center justify-center shrink-0"><span class="text-blue-700 text-sm font-bold">✓</span></div>
+          <div><p class="font-semibold text-slate-900 mb-1">Red flags your team may not see</p><p class="text-sm text-slate-500">An evidence-based outside-in view in minutes — the same starting point a £100K engagement takes 4 weeks to reach.</p></div>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- MONTH 1: 4-PHASE SYSTEM -->
+<div class="h-px bg-gradient-to-r from-transparent via-blue-700/30 to-transparent"></div>
+<section class="py-24 md:py-36 bg-[#0a0a14] relative overflow-hidden text-white">
+  <div style="background-image:radial-gradient(#1d4ed8 1px,transparent 1px);background-size:40px 40px" class="absolute inset-0 opacity-[0.05]"></div>
+  <div class="container mx-auto px-4 md:px-6 relative z-10">
+    <div class="text-center max-w-3xl mx-auto mb-16 fade-up">
+      <h2 class="text-4xl md:text-5xl font-bold text-white mb-6">A New 4-Stage System in<br/>Month 1.</h2>
+      <p class="text-xl text-slate-400">Architecting AI adoption into your GTM process. Every phase combines AI-powered analysis with a dedicated expert GTM consultant — because the best outcomes come from both.</p>
+    </div>
+
+    <div class="phase-accordion fade-up">
+
+      <!-- Phase 1a — open by default -->
+      <div class="phase-item is-open" id="phase-1a">
+        <button class="phase-btn" onclick="togglePhase('phase-1a')">
+          <span class="phase-num">1a</span>
+          <span class="phase-tag">Strategy</span>
+          <span class="phase-btn-label">Strategic to Execution Blueprint — delivered</span>
+          <svg class="phase-chevron" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24"><path d="M19 9l-7 7-7-7"/></svg>
+        </button>
+        <div class="phase-body" id="body-phase-1a" style="max-height:300px">
+          <div class="phase-body-inner">
+            <p class="phase-body-title">Strategic to Execution Blueprint — delivered</p>
+            <p class="phase-body-desc">We ask for limited data (CRM exports, financial summaries, process docs) and produce a Strategic Blueprint. Leadership aligned on hypotheses. Clear go/no-go for validation meeting with key stakeholders across the team.</p>
+          </div>
+        </div>
+      </div>
+
+      <!-- Phase 1b -->
+      <div class="phase-item" id="phase-1b">
+        <button class="phase-btn" onclick="togglePhase('phase-1b')">
+          <span class="phase-num">1b</span>
+          <span class="phase-tag">Validation</span>
+          <span class="phase-btn-label">Strategic to Execution Blueprint — validated</span>
+          <svg class="phase-chevron" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24"><path d="M19 9l-7 7-7-7"/></svg>
+        </button>
+        <div class="phase-body" id="body-phase-1b">
+          <div class="phase-body-inner">
+            <p class="phase-body-title">Strategic to Execution Blueprint — validated</p>
+            <p class="phase-body-desc">Stakeholders interviewed. Additional documentation collected. Meeting recorded. Strategic Blueprint re-run and validated with leadership for final sign-off.</p>
+          </div>
+        </div>
+      </div>
+
+      <!-- Phase 2a -->
+      <div class="phase-item phase-sky" id="phase-2a">
+        <button class="phase-btn" onclick="togglePhase('phase-2a')">
+          <span class="phase-num phase-num--sky">2a</span>
+          <span class="phase-tag phase-tag--sky">Execution</span>
+          <span class="phase-btn-label">Execution to Requirements Blueprint — generated and validated</span>
+          <svg class="phase-chevron" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24"><path d="M19 9l-7 7-7-7"/></svg>
+        </button>
+        <div class="phase-body" id="body-phase-2a">
+          <div class="phase-body-inner">
+            <p class="phase-body-title">Execution to Requirements Blueprint — generated and validated</p>
+            <p class="phase-body-desc">Initiatives prioritised with clear ownership. Requirements Packs generated ready for execution.</p>
+          </div>
+        </div>
+      </div>
+
+      <!-- Phase 2b -->
+      <div class="phase-item phase-sky" id="phase-2b">
+        <button class="phase-btn" onclick="togglePhase('phase-2b')">
+          <span class="phase-num phase-num--sky">2b</span>
+          <span class="phase-tag phase-tag--sky">Delivery</span>
+          <span class="phase-btn-label">Requirements Packs — generated</span>
+          <svg class="phase-chevron" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24"><path d="M19 9l-7 7-7-7"/></svg>
+        </button>
+        <div class="phase-body" id="body-phase-2b">
+          <div class="phase-body-inner">
+            <p class="phase-body-title">Requirements Packs — generated</p>
+            <p class="phase-body-desc">Reviewed with cross-stakeholder groups. Ready for execution with full alignment across teams.</p>
+          </div>
+        </div>
+      </div>
+
+    </div>
+
+    <div class="max-w-4xl mx-auto mt-14 fade-up">
+      <div class="bg-white/[0.04] border border-white/[0.08] rounded-2xl p-6 md:p-8">
+        <p class="text-slate-300 italic text-lg text-center">Each phase has clear outputs and sign-offs. No execution begins until strategy is validated. No ambiguity about what you're paying for.</p>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- MONTH 1 DELIVERABLES -->
+<div class="h-px bg-gradient-to-r from-transparent via-blue-700/20 to-transparent"></div>
+<section class="py-24 md:py-36 bg-white relative overflow-hidden">
+  <div class="container mx-auto px-4 md:px-6">
+    <div class="text-center max-w-3xl mx-auto mb-16 fade-up">
+      <h2 class="text-4xl md:text-5xl font-bold text-slate-900 mb-6">What You'll Have at the End of Month 1</h2>
+      <p class="text-xl text-slate-500">We work with leadership first. Your broader team only gets involved once you've agreed the direction.</p>
+    </div>
+    <div class="grid md:grid-cols-2 lg:grid-cols-4 gap-6 mb-12">
+      <div class="fade-up"><div class="card-hover"><div class="relative rounded-3xl bg-slate-50 p-8 border border-slate-100 h-full"><div class="w-10 h-10 rounded-xl bg-gradient-to-br from-blue-800 to-blue-600 flex items-center justify-center mb-6"><svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" fill="none" stroke="white" stroke-width="2" viewBox="0 0 24 24"><path d="M9 11l3 3L22 4"/><path d="M21 12v7a2 2 0 01-2 2H5a2 2 0 01-2-2V5a2 2 0 012-2h11"/></svg></div><h3 class="text-lg font-bold text-slate-900 mb-3">Maturity Scores</h3><p class="text-slate-500 text-sm leading-relaxed">Quantified position across all dimensions — so you know exactly where you stand, not just what you think.</p></div></div></div>
+      <div class="fade-up fade-up-d1"><div class="card-hover"><div class="relative rounded-3xl bg-slate-50 p-8 border border-slate-100 h-full"><div class="w-10 h-10 rounded-xl bg-gradient-to-br from-blue-800 to-blue-600 flex items-center justify-center mb-6"><svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" fill="none" stroke="white" stroke-width="2" viewBox="0 0 24 24"><path d="M9 17H5a2 2 0 00-2 2"/><path d="M15 17h4a2 2 0 012 2"/><line x1="12" y1="17" x2="12" y2="22"/><path d="M12 17V3"/><polyline points="5 10 12 3 19 10"/></svg></div><h3 class="text-lg font-bold text-slate-900 mb-3">Strategic &amp; Execution Roadmaps</h3><p class="text-slate-500 text-sm leading-relaxed">Board-ready plan with priorities, sequencing, and KPIs — built for your leadership team, not for consultants.</p></div></div></div>
+      <div class="fade-up fade-up-d2"><div class="card-hover"><div class="relative rounded-3xl bg-slate-50 p-8 border border-slate-100 h-full"><div class="w-10 h-10 rounded-xl bg-gradient-to-br from-blue-800 to-blue-600 flex items-center justify-center mb-6"><svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" fill="none" stroke="white" stroke-width="2" viewBox="0 0 24 24"><path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/><polyline points="10 9 9 9 8 9"/></svg></div><h3 class="text-lg font-bold text-slate-900 mb-3">Detailed Requirement Packs</h3><p class="text-slate-500 text-sm leading-relaxed">Execution-ready specs: scope, roles, systems, success criteria, dependencies. Your team can build from here.</p></div></div></div>
+      <div class="fade-up fade-up-d3"><div class="card-hover"><div class="relative rounded-3xl bg-slate-50 p-8 border border-slate-100 h-full"><div class="w-10 h-10 rounded-xl bg-gradient-to-br from-blue-800 to-blue-600 flex items-center justify-center mb-6"><svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" fill="none" stroke="white" stroke-width="2" viewBox="0 0 24 24"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg></div><h3 class="text-lg font-bold text-slate-900 mb-3">Governance</h3><p class="text-slate-500 text-sm leading-relaxed">Review rhythm and accountability structure — so nothing slides back into the drawer after the engagement ends.</p></div></div></div>
+    </div>
+    <p class="text-center text-slate-500 font-medium italic fade-up">Most clients can execute from here. Some want us to stay.</p>
+  </div>
+</section>
+
+<!-- CONTINUED SUPPORT -->
+<div class="h-px bg-gradient-to-r from-transparent via-blue-700/20 to-transparent"></div>
+<section class="py-24 md:py-36 bg-[#f8f8fa] relative overflow-hidden">
+  <div class="container mx-auto px-4 md:px-6">
+    <div class="text-center max-w-3xl mx-auto mb-16 fade-up">
+      <h2 class="text-4xl md:text-5xl font-bold text-slate-900 mb-6">Need Us to Stay? The Full Programme.</h2>
+      <p class="text-xl text-slate-500">Month 1 gives you everything you need to execute independently. For companies that want ongoing support, we offer continued engagement — monthly billing, stop anytime.</p>
+    </div>
+    <div class="max-w-3xl mx-auto grid md:grid-cols-2 gap-8">
+      <div class="fade-up"><div class="card-hover"><div class="relative bg-white rounded-3xl border border-slate-100 p-8 h-full"><span class="inline-flex items-center px-3 py-1 rounded-full bg-blue-50 text-blue-700 text-xs font-bold uppercase tracking-wider mb-6">Months 2–4</span><h3 class="text-xl font-bold text-slate-900 mb-6">Design &amp; Build</h3><ul class="space-y-3">
+        <li class="flex items-start gap-3 text-slate-500"><span class="text-emerald-500 font-bold mt-0.5 shrink-0">✓</span> Identify the resources you need to execute</li>
+        <li class="flex items-start gap-3 text-slate-500"><span class="text-emerald-500 font-bold mt-0.5 shrink-0">✓</span> Execute the agreed plan</li>
+        <li class="flex items-start gap-3 text-slate-500"><span class="text-emerald-500 font-bold mt-0.5 shrink-0">✓</span> Deliver priority projects</li>
+      </ul></div></div></div>
+      <div class="fade-up fade-up-d1"><div class="card-hover"><div class="relative bg-white rounded-3xl border border-slate-100 p-8 h-full"><span class="inline-flex items-center px-3 py-1 rounded-full bg-sky-50 text-sky-600 text-xs font-bold uppercase tracking-wider mb-6">Months 5–6</span><h3 class="text-xl font-bold text-slate-900 mb-6">Refine &amp; Handover</h3><ul class="space-y-3">
+        <li class="flex items-start gap-3 text-slate-500"><span class="text-emerald-500 font-bold mt-0.5 shrink-0">✓</span> Track what's working</li>
+        <li class="flex items-start gap-3 text-slate-500"><span class="text-emerald-500 font-bold mt-0.5 shrink-0">✓</span> Identify any issues early</li>
+        <li class="flex items-start gap-3 text-slate-500"><span class="text-emerald-500 font-bold mt-0.5 shrink-0">✓</span> Hand over to your team</li>
+      </ul></div></div></div>
+    </div>
+    <div class="max-w-3xl mx-auto mt-8 fade-up">
+      <div class="bg-white border border-slate-200 rounded-2xl p-6 text-center">
+        <p class="text-slate-500 text-sm mb-2"><strong class="text-slate-700">Pricing:</strong> Quoted per engagement based on scope. No lock-in. Stop anytime.</p>
+        <p class="text-slate-400 text-sm italic">Nothing changes about the commercial terms. Monthly. Transparent. Aligned with your outcomes.</p>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- WHAT MAKES THIS DIFFERENT -->
+<div class="h-px bg-gradient-to-r from-transparent via-blue-700/20 to-transparent"></div>
+<section class="py-24 md:py-36 bg-white relative overflow-hidden">
+  <div class="container mx-auto px-4 md:px-6">
+    <div class="text-center max-w-3xl mx-auto mb-20 fade-up">
+      <h2 class="text-4xl md:text-5xl font-bold text-slate-900 mb-6">What Makes This Different</h2>
+      <p class="text-xl text-slate-500">Six principles baked into every phase.</p>
+    </div>
+    <div class="grid md:grid-cols-2 lg:grid-cols-3 gap-6">
+      <div class="fade-up"><div class="card-hover"><div class="relative rounded-3xl bg-slate-50 p-8 border border-slate-100 h-full"><h3 class="text-xl font-bold text-slate-900 mb-3">Evidence Over Opinion</h3><p class="text-slate-500 leading-relaxed">We interrogate your actual data — CRM, financials, market signals — not filtered narratives from workshops.</p></div></div></div>
+      <div class="fade-up fade-up-d1"><div class="card-hover"><div class="relative rounded-3xl bg-slate-50 p-8 border border-slate-100 h-full"><h3 class="text-xl font-bold text-slate-900 mb-3">Human-in-the-Loop</h3><p class="text-slate-500 leading-relaxed">AI finds the patterns. Your team validates what matters. We guide the process from insight to action.</p></div></div></div>
+      <div class="fade-up fade-up-d2"><div class="card-hover"><div class="relative rounded-3xl bg-slate-50 p-8 border border-slate-100 h-full"><h3 class="text-xl font-bold text-slate-900 mb-3">Revenue Engine Focus</h3><p class="text-slate-500 leading-relaxed">We connect marketing, sales, and customer success — not just optimise one function in isolation.</p></div></div></div>
+      <div class="fade-up"><div class="card-hover"><div class="relative rounded-3xl bg-slate-50 p-8 border border-slate-100 h-full"><h3 class="text-xl font-bold text-slate-900 mb-3">Execution-Ready Outputs</h3><p class="text-slate-500 leading-relaxed">Requirements packs your team can actually implement — scope, roles, systems, success criteria, dependencies.</p></div></div></div>
+      <div class="fade-up fade-up-d1"><div class="card-hover"><div class="relative rounded-3xl bg-slate-50 p-8 border border-slate-100 h-full"><h3 class="text-xl font-bold text-slate-900 mb-3">Readiness Assessment</h3><p class="text-slate-500 leading-relaxed">We assess whether your people, data, and processes can absorb change — not just what tools you need.</p></div></div></div>
+      <div class="fade-up fade-up-d2"><div class="card-hover"><div class="relative rounded-3xl bg-slate-50 p-8 border border-slate-100 h-full"><h3 class="text-xl font-bold text-slate-900 mb-3">Governed Delivery</h3><p class="text-slate-500 leading-relaxed">Lock requirements. Track through clear phases. Measure ROI. No scope creep.</p></div></div></div>
+    </div>
+  </div>
+</section>
+
+<!-- CTA -->
+<section class="py-24 md:py-36 bg-[#f8f8fa]">
+  <div class="container mx-auto px-4 md:px-6">
+    <div class="fade-up">
+      <div style="background:linear-gradient(135deg,#1e3a8a,#1e40af,#0369a1);background-size:200% 200%;animation:ss-grad 6s ease infinite" class="relative rounded-[3rem] p-12 md:p-24 text-center text-white overflow-hidden shadow-2xl">
+        <div class="absolute top-0 left-0 w-64 h-64 bg-white/10 rounded-full blur-[80px] -translate-x-1/2 -translate-y-1/2"></div>
+        <div class="absolute bottom-0 right-0 w-96 h-96 bg-sky-400/20 rounded-full blur-[100px] translate-x-1/3 translate-y-1/3"></div>
+        <div class="relative z-10 max-w-3xl mx-auto">
+          <h2 class="text-4xl md:text-5xl font-bold mb-6">Ready to See Where You Stand?</h2>
+          <p class="text-xl text-white/80 mb-10 leading-relaxed">Start with a free web scan. No commitment, no data access required. Your readiness score in minutes.</p>
+          <a href="/signup" class="inline-flex items-center justify-center h-16 px-10 rounded-xl bg-white text-blue-800 font-bold text-lg shadow-xl shadow-black/10 hover:shadow-2xl transition-shadow duration-300">Get My Free Web Scan →</a>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- FOOTER -->
+<footer class="bg-[#0a0a0f] border-t border-white/5 py-16">
+  <div class="container mx-auto px-4 md:px-6 flex flex-col md:flex-row justify-between items-center gap-6 text-sm text-slate-500">
+    <strong class="text-white text-base font-bold">SupaStack Ltd</strong>
+    <div class="flex flex-col md:flex-row items-center gap-4 md:gap-8">
+      <a href="how-it-works.html" class="text-slate-300 font-semibold">How It Works</a>
+      <a href="pricing.html" class="hover:text-slate-300 transition-colors">Pricing</a>
+      <a href="about.html" class="hover:text-slate-300 transition-colors">About</a>
+    </div>
+    <span>Company number 16869878 · Registered in England and Wales</span>
+    <span>© 2026 SupaStack. All rights reserved.</span>
+  </div>
+</footer>
+
+<script>
+  const observer = new IntersectionObserver((entries) => {
+    entries.forEach(e => { if (e.isIntersecting) e.target.classList.add('visible'); });
+  }, { threshold: 0.1 });
+  document.querySelectorAll('.fade-up').forEach(el => observer.observe(el));
+  setTimeout(() => document.querySelectorAll('section:first-of-type .fade-up').forEach(el => el.classList.add('visible')), 50);
+
+  function togglePhase(id) {
+    const item = document.getElementById(id);
+    const body = document.getElementById('body-' + id);
+    const isOpen = item.classList.contains('is-open');
+    // Close all
+    document.querySelectorAll('.phase-item').forEach(el => {
+      el.classList.remove('is-open');
+      document.getElementById('body-' + el.id).style.maxHeight = '0';
+    });
+    // Open clicked if it was closed
+    if (!isOpen) {
+      item.classList.add('is-open');
+      body.style.maxHeight = body.scrollHeight + 'px';
+    }
+  }
+</script>
+</body>
+</html>

@@ -1,0 +1,777 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1"/>
+  <title>SupaStack — GTM & AI Readiness Operating System</title>
+  <meta name="description" content="SupaStack gives mid-market leadership teams a structured, evidence-led operating system to diagnose, prove, and operationalise AI across their go-to-market and partner ecosystems."/>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@100;200;300;400;500;600;700;800;900&display=swap" rel="stylesheet">
+  <script src="https://cdn.tailwindcss.com"></script>
+  <style>
+    body { font-family: 'Inter', sans-serif; -webkit-font-smoothing: antialiased; }
+    @keyframes ss-float { 0%,100% { transform: translateY(0) rotate(0deg); } 33% { transform: translateY(-30px) rotate(5deg); } 66% { transform: translateY(15px) rotate(-3deg); } }
+    @keyframes ss-float-rev { 0%,100% { transform: translateY(0) rotate(0deg); } 33% { transform: translateY(20px) rotate(-4deg); } 66% { transform: translateY(-25px) rotate(6deg); } }
+    @keyframes ss-float-slow { 0%,100% { transform: translateY(0); } 50% { transform: translateY(-20px); } }
+    @keyframes ss-shimmer { 0% { background-position: 0% center; } 100% { background-position: -200% center; } }
+    @keyframes ss-grad { 0%,100% { background-position: 0% 50%; } 50% { background-position: 100% 50%; } }
+    @keyframes ss-pulse { 0% { opacity: 0.8; transform: scale(1); } 100% { opacity: 0; transform: scale(1.8); } }
+    @keyframes ss-scan { 0%,100% { transform: translateY(-100%); } 50% { transform: translateY(100%); } }
+    @keyframes ss-rotate { from { transform: rotate(0deg); } to { transform: rotate(360deg); } }
+    @keyframes ss-grid { 0%,100% { opacity: 0.3; } 50% { opacity: 0.6; } }
+    .fade-up { opacity: 0; transform: translateY(40px); filter: blur(8px); transition: opacity 0.7s ease, transform 0.7s ease, filter 0.7s ease; }
+    .fade-up.visible { opacity: 1; transform: translateY(0); filter: blur(0); }
+    .fade-up-d1 { transition-delay: 0.1s; }
+    .fade-up-d2 { transition-delay: 0.2s; }
+    .fade-up-d3 { transition-delay: 0.3s; }
+    .shimmer-text { background-size: 200% 100%; animation: ss-shimmer 4s linear infinite; }
+    .card-hover { position: relative; }
+    .card-hover::before { content: ''; position: absolute; inset: -1px; border-radius: 1.5rem; background: linear-gradient(135deg, #1d4ed8, #2563eb, #0284c7); opacity: 0; transition: opacity 0.5s ease; filter: blur(2px); z-index: 0; }
+    .card-hover:hover::before { opacity: 1; }
+    .card-hover > * { position: relative; z-index: 1; }
+    .tab-btn.active { background: rgba(29,78,216,0.1); color: #93c5fd; border-color: rgba(29,78,216,0.3) !important; }
+    .tab-panel { display: none; }
+    .tab-panel.active { display: block; }
+    header.scrolled { background: rgba(255,255,255,0.95); backdrop-filter: blur(12px); box-shadow: 0 1px 0 rgba(0,0,0,0.06); }
+  </style>
+
+<style>
+/* Comparison Cards Component */
+
+  :root {
+    --bg: #f4f5f7;
+    --card-light-bg: #ffffff;
+    --card-light-border: #e2e4e9;
+    --card-dark-bg: #0f1629;
+    --card-dark-border: rgba(120, 100, 255, 0.3);
+    --text-primary: #1a1d27;
+    --text-secondary: #5a5f72;
+    --text-muted: #8b90a0;
+    --text-on-dark: #e8e9f0;
+    --text-muted-dark: #8b90b8;
+    --accent-green: #34d399;
+    --accent-red: #f87171;
+    --accent-purple: #7c6aff;
+    --label-dark: #2a2d3a;
+    --label-dark-text: #a0a3c0;
+    --strike-light: #b0b3c0;
+    --strike-dark: #555878;
+  }
+
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+
+  body {
+    font-family: 'DM Sans', sans-serif;
+    background: var(--bg);
+    color: var(--text-primary);
+    -webkit-font-smoothing: antialiased;
+  }
+
+  .section {
+    max-width: 1120px;
+    margin: 0 auto;
+    padding: 80px 24px;
+  }
+
+  .section-header {
+    text-align: center;
+    margin-bottom: 56px;
+  }
+
+  .section-header h2 {
+    font-family: 'DM Sans', sans-serif;
+    font-size: clamp(2rem, 4vw, 2.75rem);
+    font-weight: 700;
+    letter-spacing: -0.02em;
+    line-height: 1.15;
+    color: var(--text-primary);
+    margin-bottom: 16px;
+  }
+
+  .section-header p {
+    font-size: 1.1rem;
+    color: var(--text-secondary);
+    max-width: 600px;
+    margin: 0 auto;
+    line-height: 1.6;
+  }
+
+  .cards-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 28px;
+    align-items: stretch;
+  }
+
+  /* ── Light Card (Traditional) ── */
+  .card {
+    border-radius: 16px;
+    padding: 40px 36px;
+    display: flex;
+    flex-direction: column;
+  }
+
+  .card--light {
+    background: var(--card-light-bg);
+    border: 1px solid var(--card-light-border);
+  }
+
+  .card--dark {
+    background: var(--card-dark-bg);
+    border: 1px solid var(--card-dark-border);
+    box-shadow:
+      0 0 40px rgba(124, 106, 255, 0.08),
+      0 20px 60px rgba(0, 0, 0, 0.25);
+    position: relative;
+    overflow: hidden;
+  }
+
+  .card--dark::before {
+    content: '';
+    position: absolute;
+    top: 0; left: 0; right: 0;
+    height: 2px;
+    background: linear-gradient(90deg, transparent, var(--accent-purple), transparent);
+  }
+
+  /* ── Card Label ── */
+  .card-label {
+    font-size: 0.7rem;
+    font-weight: 600;
+    letter-spacing: 0.12em;
+    text-transform: uppercase;
+    margin-bottom: 12px;
+  }
+
+  .card--light .card-label { color: var(--text-muted); }
+  .card--dark .card-label { color: var(--accent-purple); }
+
+  /* ── Card Title ── */
+  .card-title {
+    font-family: 'DM Sans', sans-serif;
+    font-size: 1.65rem;
+    font-weight: 700;
+    letter-spacing: -0.01em;
+    margin-bottom: 12px;
+  }
+
+  .card--light .card-title { color: var(--text-primary); }
+  .card--dark .card-title { color: #fff; }
+
+  /* ── Card Subtitle ── */
+  .card-subtitle {
+    font-size: 0.95rem;
+    line-height: 1.55;
+    margin-bottom: 28px;
+  }
+
+  .card--light .card-subtitle { color: var(--text-secondary); }
+  .card--dark .card-subtitle { color: var(--text-muted-dark); }
+
+  /* ── Stats Row ── */
+  .stats-row {
+    display: flex;
+    gap: 40px;
+    margin-bottom: 32px;
+    padding-bottom: 28px;
+    border-bottom: 1px solid var(--card-light-border);
+  }
+
+  .card--dark .stats-row {
+    border-bottom-color: rgba(255, 255, 255, 0.08);
+  }
+
+  .stat-value {
+    font-family: 'DM Sans', sans-serif;
+    font-size: 1.5rem;
+    font-weight: 700;
+    letter-spacing: -0.01em;
+  }
+
+  .card--light .stat-value { color: var(--text-primary); }
+  .card--dark .stat-value { color: #fff; }
+
+  .stat-label {
+    font-size: 0.65rem;
+    font-weight: 600;
+    letter-spacing: 0.1em;
+    text-transform: uppercase;
+    margin-top: 2px;
+  }
+
+  .card--light .stat-label { color: var(--text-muted); }
+  .card--dark .stat-label { color: var(--text-muted-dark); }
+
+  /* ── Dimension Items ── */
+  .dimensions {
+    display: flex;
+    flex-direction: column;
+    gap: 16px;
+    flex: 1;
+  }
+
+  .dim-item {
+    display: flex;
+    align-items: flex-start;
+    gap: 12px;
+  }
+
+  .dim-icon {
+    flex-shrink: 0;
+    width: 20px;
+    height: 20px;
+    margin-top: 1px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+  }
+
+  .dim-icon svg { width: 16px; height: 16px; }
+
+  .dim-content {
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+  }
+
+  .dim-category {
+    font-size: 0.65rem;
+    font-weight: 600;
+    letter-spacing: 0.1em;
+    text-transform: uppercase;
+    display: inline-block;
+    padding: 2px 8px;
+    border-radius: 4px;
+    width: fit-content;
+    margin-bottom: 2px;
+  }
+
+  .card--light .dim-category {
+    background: #f0f1f4;
+    color: var(--text-muted);
+  }
+
+  .card--dark .dim-category {
+    background: var(--label-dark);
+    color: var(--label-dark-text);
+  }
+
+  .dim-text {
+    font-size: 0.9rem;
+    line-height: 1.45;
+  }
+
+  .card--light .dim-text { color: var(--text-secondary); }
+  .card--dark .dim-text { color: var(--text-on-dark); }
+
+  .dim-text--strike {
+    text-decoration: line-through;
+    text-decoration-thickness: 1.5px;
+  }
+
+  .card--light .dim-text--strike { color: var(--strike-light); text-decoration-color: var(--strike-light); }
+  .card--dark .dim-text--strike { color: var(--strike-dark); text-decoration-color: var(--strike-dark); }
+
+  /* ── Responsive ── */
+  @media (max-width: 768px) {
+    .cards-grid {
+      grid-template-columns: 1fr;
+      gap: 20px;
+    }
+    .card { padding: 32px 28px; }
+    .stats-row { gap: 28px; }
+    .section { padding: 56px 20px; }
+  }
+
+</style>
+</head>
+<body class="bg-white text-slate-900 selection:bg-blue-500/30">
+
+<!-- NAV -->
+<header id="site-header" class="fixed top-0 left-0 right-0 z-50 transition-all duration-500 py-5">
+  <div class="container mx-auto px-4 md:px-6 flex items-center justify-between">
+    <a href="index.html" class="text-2xl font-bold tracking-tighter text-slate-900">SupaStack</a>
+    <nav class="hidden md:block">
+      <ul class="flex items-center gap-8 text-sm font-medium text-slate-500">
+        <li><a href="how-it-works.html" class="hover:text-slate-900 transition-colors duration-300">How It Works</a></li>
+        <li><a href="pricing.html" class="hover:text-slate-900 transition-colors duration-300">Pricing</a></li>
+        <li><a href="about.html" class="hover:text-slate-900 transition-colors duration-300">About</a></li>
+      </ul>
+    </nav>
+    <div class="flex items-center gap-4">
+      <a href="/login" class="hidden md:inline-flex text-sm font-medium text-slate-500 hover:text-slate-900 transition-colors duration-300">Sign In</a>
+      <a href="/signup" class="hidden md:inline-flex items-center h-9 px-5 rounded-lg text-sm font-semibold bg-gradient-to-r from-blue-800 to-blue-600 text-white hover:shadow-lg hover:shadow-blue-700/25 transition-all duration-300">Get Free Scan</a>
+      <button class="md:hidden p-2 text-slate-600" onclick="document.getElementById('mobile-menu').classList.toggle('hidden')">
+        <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" viewBox="0 0 24 24"><path d="M4 5h16M4 12h16M4 19h16"/></svg>
+      </button>
+    </div>
+  </div>
+  <div id="mobile-menu" class="hidden md:hidden bg-white border-t border-slate-100 px-4 py-4 space-y-3 text-sm font-medium">
+    <a href="how-it-works.html" class="block text-slate-600 hover:text-slate-900">How It Works</a>
+    <a href="pricing.html" class="block text-slate-600 hover:text-slate-900">Pricing</a>
+    <a href="about.html" class="block text-slate-600 hover:text-slate-900">About</a>
+    <a href="/signup" class="block text-blue-700 font-semibold">Get Free Scan →</a>
+  </div>
+</header>
+
+<!-- HERO -->
+<section id="top" class="relative min-h-screen flex items-center pt-24 pb-20 md:pt-32 md:pb-32 overflow-hidden bg-gradient-to-br from-slate-50 via-white to-blue-50/40">
+  <div class="absolute inset-0 overflow-hidden pointer-events-none">
+    <div style="top:-10%;left:5%;background:radial-gradient(circle,#bfdbfe,transparent 70%);animation:ss-float 20s ease-in-out infinite;will-change:transform" class="absolute w-[600px] h-[600px] rounded-full blur-[150px] opacity-30"></div>
+    <div style="top:25%;right:0%;background:radial-gradient(circle,#93c5fd,transparent 70%);animation:ss-float-rev 25s ease-in-out infinite;will-change:transform" class="absolute w-[500px] h-[500px] rounded-full blur-[120px] opacity-25"></div>
+    <div style="bottom:-5%;left:35%;background:radial-gradient(circle,#bae6fd,transparent 70%);animation:ss-float-slow 30s ease-in-out infinite;will-change:transform" class="absolute w-[400px] h-[400px] rounded-full blur-[100px] opacity-20"></div>
+  </div>
+  <div style="background-image:linear-gradient(rgba(29,78,216,.08) 1px,transparent 1px),linear-gradient(90deg,rgba(29,78,216,.08) 1px,transparent 1px);background-size:60px 60px" class="absolute inset-0 opacity-[0.035]"></div>
+  <div class="container mx-auto px-4 md:px-6 grid lg:grid-cols-2 gap-12 md:gap-20 items-center relative z-10">
+    <div class="space-y-8">
+      <div class="fade-up">
+        <span class="inline-flex items-center px-4 py-2 rounded-full bg-blue-50 border border-blue-200 text-blue-700 text-xs font-semibold tracking-widest uppercase">The Missing Operating System for AI-Driven GTM &amp; Partnerships Transformation</span>
+      </div>
+      <div class="fade-up fade-up-d1">
+        <h1 class="text-5xl sm:text-6xl md:text-7xl font-bold tracking-tight text-slate-900 leading-[1.08]">95% of AI Pilots Fail.</h1>
+        <h1 class="text-5xl sm:text-6xl md:text-7xl font-bold tracking-tight leading-[1.08] text-transparent bg-clip-text bg-gradient-to-r from-blue-900 via-blue-700 to-sky-600 shimmer-text">Not Because of the AI.</h1>
+      </div>
+      <div class="fade-up fade-up-d2">
+        <p class="text-xl text-slate-500 leading-relaxed max-w-xl">SupaStack gives mid-market leadership teams a structured, evidence-led operating system to diagnose, prove, and operationalise AI across their go-to-market and partner ecosystems. One system. Multiple playbooks. Proven results.</p>
+      </div>
+      <div class="fade-up fade-up-d3 flex flex-col sm:flex-row gap-4 pt-2">
+        <a href="/signup" class="inline-flex items-center justify-center h-14 px-8 rounded-xl bg-gradient-to-r from-blue-800 to-blue-600 text-white font-semibold shadow-lg shadow-blue-700/25 hover:shadow-blue-700/40 transition-shadow duration-300">
+          Get Your Free Web Scan
+          <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" viewBox="0 0 24 24" class="ml-2"><path d="M5 12h14"/><path d="m12 5 7 7-7 7"/></svg>
+        </a>
+        <a href="how-it-works.html" class="inline-flex items-center justify-center h-14 px-8 rounded-xl bg-white border border-slate-200 text-slate-700 font-semibold hover:bg-slate-50 hover:border-slate-300 transition-all duration-300 shadow-sm">See How It Works</a>
+      </div>
+    </div>
+    <!-- Readiness Pulse Widget -->
+    <div class="fade-up fade-up-d2">
+      <div class="relative p-[1px] rounded-3xl overflow-hidden shadow-2xl shadow-blue-700/10">
+        <div style="background:conic-gradient(from 0deg,#1d4ed8,#2563eb,#0284c7,#06b6d4,#1d4ed8);animation:ss-rotate 4s linear infinite" class="absolute inset-[-50%] opacity-60"></div>
+        <div class="relative bg-[#0c0c1a] rounded-3xl overflow-hidden">
+          <div class="bg-gradient-to-r from-[#0f0f24] to-[#12122a] px-8 py-6 flex justify-between items-center">
+            <span class="font-medium text-slate-400 uppercase tracking-[0.2em] text-xs">Readiness Pulse</span>
+            <span class="text-4xl font-bold text-transparent bg-clip-text bg-gradient-to-r from-emerald-300 to-emerald-400">88</span>
+          </div>
+          <div class="p-8 space-y-5">
+            <div class="flex items-center justify-between group"><span class="text-slate-400 font-medium text-sm group-hover:text-slate-200 transition-colors">People &amp; Org</span><div class="flex items-center gap-4 flex-1 justify-end"><div class="h-2 w-32 bg-white/[0.06] rounded-full overflow-hidden"><div class="h-full bg-gradient-to-r from-blue-800 via-blue-600 to-sky-500 rounded-full" style="width:87%"></div></div><span class="text-white font-bold tabular-nums text-sm">87</span></div></div>
+            <div class="flex items-center justify-between group"><span class="text-slate-400 font-medium text-sm group-hover:text-slate-200 transition-colors">Data &amp; Intelligence</span><div class="flex items-center gap-4 flex-1 justify-end"><div class="h-2 w-32 bg-white/[0.06] rounded-full overflow-hidden"><div class="h-full bg-gradient-to-r from-blue-800 via-blue-600 to-sky-500 rounded-full" style="width:91%"></div></div><span class="text-white font-bold tabular-nums text-sm">91</span></div></div>
+            <div class="flex items-center justify-between group"><span class="text-slate-400 font-medium text-sm group-hover:text-slate-200 transition-colors">Technology Stack</span><div class="flex items-center gap-4 flex-1 justify-end"><div class="h-2 w-32 bg-white/[0.06] rounded-full overflow-hidden"><div class="h-full bg-gradient-to-r from-blue-800 via-blue-600 to-sky-500 rounded-full" style="width:84%"></div></div><span class="text-white font-bold tabular-nums text-sm">84</span></div></div>
+            <div class="flex items-center justify-between group"><span class="text-slate-400 font-medium text-sm group-hover:text-slate-200 transition-colors">GTM Strategy</span><div class="flex items-center gap-4 flex-1 justify-end"><div class="h-2 w-32 bg-white/[0.06] rounded-full overflow-hidden"><div class="h-full bg-gradient-to-r from-blue-800 via-blue-600 to-sky-500 rounded-full" style="width:89%"></div></div><span class="text-white font-bold tabular-nums text-sm">89</span></div></div>
+            <div class="flex items-center justify-between group"><span class="text-slate-400 font-medium text-sm group-hover:text-slate-200 transition-colors">Operations</span><div class="flex items-center gap-4 flex-1 justify-end"><div class="h-2 w-32 bg-white/[0.06] rounded-full overflow-hidden"><div class="h-full bg-gradient-to-r from-blue-800 via-blue-600 to-sky-500 rounded-full" style="width:86%"></div></div><span class="text-white font-bold tabular-nums text-sm">86</span></div></div>
+            <div class="flex items-center justify-between group"><span class="text-slate-400 font-medium text-sm group-hover:text-slate-200 transition-colors">Financial Guardrails</span><div class="flex items-center gap-4 flex-1 justify-end"><div class="h-2 w-32 bg-white/[0.06] rounded-full overflow-hidden"><div class="h-full bg-gradient-to-r from-blue-800 via-blue-600 to-sky-500 rounded-full" style="width:93%"></div></div><span class="text-white font-bold tabular-nums text-sm">93</span></div></div>
+          </div>
+          <div style="animation:ss-scan 4s ease-in-out infinite" class="absolute inset-0 bg-gradient-to-b from-transparent via-blue-600/[0.03] to-transparent pointer-events-none"></div>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- DIVIDER -->
+<div class="h-px bg-gradient-to-r from-transparent via-blue-700/20 to-transparent"></div>
+
+<!-- PROBLEM -->
+<section id="problem" class="py-24 md:py-36 bg-white relative overflow-hidden">
+  <div class="container mx-auto px-4 md:px-6">
+    <div class="text-center max-w-3xl mx-auto mb-20 fade-up">
+      <h2 class="text-4xl md:text-5xl font-bold text-slate-900 mb-6">Why GTM Transformation Fails</h2>
+      <p class="text-xl text-slate-500">It's not the AI. It's the readiness gap — 83% of leaders know AI will transform their business, but only 39% feel confident implementing it.</p>
+    </div>
+    <div class="grid lg:grid-cols-12 gap-12">
+      <div class="lg:col-span-4 lg:sticky lg:top-32 h-fit mb-12 lg:mb-0 fade-up">
+        <div class="w-20 h-1 bg-gradient-to-r from-blue-700 to-blue-600 mb-8 rounded-full"></div>
+        <h3 class="text-3xl font-bold text-slate-900 leading-snug">The problem isn't AI. It's the guidance gap between GTM strategy and RevOps execution.</h3>
+      </div>
+      <div class="lg:col-span-8 grid md:grid-cols-2 gap-6">
+        <div class="fade-up"><div class="card-hover"><div class="relative rounded-3xl bg-slate-50 p-8 border border-slate-100"><span class="text-5xl font-mono font-extralight text-slate-200 block mb-4">01</span><h3 class="text-xl font-bold text-slate-900 mb-3">Opinion-Led Discovery</h3><p class="text-slate-500 leading-relaxed">Traditional consultants rely on interviews and workshops. You get filtered narratives, not ground truth about your revenue engine.</p></div></div></div>
+        <div class="fade-up fade-up-d1"><div class="card-hover"><div class="relative rounded-3xl bg-slate-50 p-8 border border-slate-100"><span class="text-5xl font-mono font-extralight text-slate-200 block mb-4">02</span><h3 class="text-xl font-bold text-slate-900 mb-3">Disconnected from Revenue Reality</h3><p class="text-slate-500 leading-relaxed">AI and GTM initiatives live in silos, disconnected from how marketing, sales, and CS actually work together.</p></div></div></div>
+        <div class="fade-up fade-up-d2"><div class="card-hover"><div class="relative rounded-3xl bg-slate-50 p-8 border border-slate-100"><span class="text-5xl font-mono font-extralight text-slate-200 block mb-4">03</span><h3 class="text-xl font-bold text-slate-900 mb-3">Endless Planning Cycles</h3><p class="text-slate-500 leading-relaxed">8–12 weeks of discovery. £50–150K spent. And still no execution-ready specs for your revenue operations.</p></div></div></div>
+        <div class="fade-up fade-up-d3"><div class="card-hover"><div class="relative rounded-3xl bg-slate-50 p-8 border border-slate-100"><span class="text-5xl font-mono font-extralight text-slate-200 block mb-4">04</span><h3 class="text-xl font-bold text-slate-900 mb-3">Technology-First Thinking</h3><p class="text-slate-500 leading-relaxed">Vendors sell point solutions. You need an integrated revenue engine. The gap costs you £25–100K/year.</p></div></div></div>
+        <div class="md:col-span-2 fade-up">
+          <p class="text-center text-lg font-semibold text-slate-400 italic pt-4">"They fail because nobody diagnosed what needed to change first."</p>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- MANIFESTO -->
+<div class="h-px bg-gradient-to-r from-transparent via-blue-700/30 to-transparent"></div>
+<section class="py-24 md:py-36 bg-[#0a0a14] relative overflow-hidden">
+  <div style="background-image:radial-gradient(#1d4ed8 1px,transparent 1px);background-size:40px 40px" class="absolute inset-0 opacity-[0.05]"></div>
+  <div class="container mx-auto px-4 md:px-6 py-12 relative z-10 max-w-5xl text-center">
+    <div class="fade-up"><p class="text-blue-400 font-medium tracking-[0.3em] uppercase text-sm mb-10">We Believe Transformation Shouldn't Be This Hard</p></div>
+    <div class="fade-up fade-up-d1"><h2 class="text-3xl md:text-5xl font-light leading-tight md:leading-tight text-slate-200/90">"The AI revolution promised speed. Instead, most companies got: 8-week discovery cycles. £100K consulting bills. PowerPoints that never became products. We started SupaStack because mid-market companies deserve better than expensive opinion-gathering dressed up as strategy."</h2></div>
+  </div>
+</section>
+<div class="h-px bg-gradient-to-r from-transparent via-blue-700/20 to-transparent"></div>
+
+<!-- SERVICE MODEL -->
+<section id="services" class="py-24 md:py-36 bg-white relative overflow-hidden">
+  <div class="container mx-auto px-4 md:px-6">
+    <div class="text-center max-w-3xl mx-auto mb-20 fade-up">
+      <h2 class="text-4xl md:text-5xl font-bold text-slate-900 mb-6">From Assessment to Action</h2>
+      <p class="text-xl text-slate-500">AI finds the patterns. Humans validate the priorities. You get execution-ready plans — not shelf-ware.</p>
+    </div>
+    <div class="grid md:grid-cols-4 gap-6 relative">
+      <div class="hidden md:block absolute top-[60px] left-0 w-full h-0.5 bg-slate-100 -z-10"></div>
+      <div class="relative pt-8 fade-up">
+        <div class="w-16 h-16 rounded-full flex items-center justify-center font-bold text-xl border-4 bg-white z-10 relative mx-auto border-slate-100 text-slate-300 mb-6">01</div>
+        <div class="p-6 rounded-2xl border bg-slate-50 border-slate-100 hover:border-blue-200 transition-colors">
+          <h3 class="text-xl font-bold mb-4 text-slate-900">Web Scan</h3>
+          <p class="mb-6 text-sm leading-relaxed text-slate-500">AI analyses public signals about your company. See your readiness score and competitive position in minutes.</p>
+          <div class="pt-4 border-t text-xs space-y-2 border-slate-200 text-slate-400">
+            <div class="font-semibold">Deliverable · Readiness Report</div>
+            <div class="font-semibold">Outcome · Readiness score in minutes</div>
+          </div>
+        </div>
+      </div>
+      <div class="relative pt-8 md:-mt-8 fade-up fade-up-d1">
+        <div class="relative w-16 h-16 mx-auto mb-6">
+          <div class="w-16 h-16 rounded-full flex items-center justify-center font-bold text-xl border-4 bg-white z-10 relative mx-auto border-blue-800 text-blue-700 shadow-lg shadow-blue-300">02</div>
+          <div style="animation:ss-pulse 2s ease-out infinite" class="absolute inset-0 rounded-full border-2 border-blue-700/40 mx-auto"></div>
+        </div>
+        <div class="p-6 rounded-2xl border bg-gradient-to-br from-blue-800 to-blue-600 text-white border-transparent shadow-xl shadow-blue-700/20">
+          <h3 class="text-xl font-bold mb-4 text-white">Deep Diagnostic</h3>
+          <p class="mb-6 text-sm leading-relaxed text-blue-100">We analyse your data, build a strategic blueprint, and validate it with your leadership and stakeholders.</p>
+          <div class="pt-4 border-t text-xs space-y-2 border-blue-700/50 text-blue-200">
+            <div class="font-semibold">Deliverable · Strategic Blueprint</div>
+            <div class="font-semibold">Outcome · Direction locked, leadership aligned</div>
+          </div>
+        </div>
+      </div>
+      <div class="relative pt-8 fade-up fade-up-d2">
+        <div class="w-16 h-16 rounded-full flex items-center justify-center font-bold text-xl border-4 bg-white z-10 relative mx-auto border-slate-100 text-slate-300 mb-6">03</div>
+        <div class="p-6 rounded-2xl border bg-slate-50 border-slate-100 hover:border-blue-200 transition-colors">
+          <h3 class="text-xl font-bold mb-4 text-slate-900">Execution Blueprint</h3>
+          <p class="mb-6 text-sm leading-relaxed text-slate-500">Priorities locked. Ownership assigned. Execution-ready specs for each initiative — reviewed and aligned across teams.</p>
+          <div class="pt-4 border-t text-xs space-y-2 border-slate-200 text-slate-400">
+            <div class="font-semibold">Deliverable · Blueprints</div>
+            <div class="font-semibold">Outcome · Teams briefed &amp; resourced</div>
+          </div>
+        </div>
+      </div>
+      <div class="relative pt-8 fade-up fade-up-d3">
+        <div class="w-16 h-16 rounded-full flex items-center justify-center font-bold text-xl border-4 bg-white z-10 relative mx-auto border-slate-100 text-slate-300 mb-6">04</div>
+        <div class="p-6 rounded-2xl border bg-slate-50 border-slate-100 hover:border-blue-200 transition-colors">
+          <h3 class="text-xl font-bold mb-4 text-slate-900">Governed Execution</h3>
+          <p class="mb-6 text-sm leading-relaxed text-slate-500">We help you find the right resources and govern execution through to ROI achievement. Three gates, clear success criteria.</p>
+          <div class="pt-4 border-t text-xs space-y-2 border-slate-200 text-slate-400">
+            <div class="font-semibold">Deliverable · Ongoing</div>
+            <div class="font-semibold">Outcome · Time-to-value assured</div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- VS CONSULTING -->
+<div class="h-px bg-gradient-to-r from-transparent via-blue-700/20 to-transparent"></div>
+<section class="section">
+  <div class="section-header fade-up">
+    <h2>Evidence-Led GTM Transformation</h2>
+    <p>AI finds the patterns. Humans validate the priorities. You get execution-ready plans.</p>
+  </div>
+
+  <div class="cards-grid">
+
+    <!-- Traditional Consulting -->
+    <div class="card card--light fade-up">
+      <div class="card-label">Traditional Consulting</div>
+      <div class="card-title">8–12 weeks discovery</div>
+      <div class="card-subtitle">Interview-led, subjective. AI-only or human-only. Long lists of ideas. Reports on shelves.</div>
+
+      <div class="stats-row">
+        <div>
+          <div class="stat-value">8–12 weeks</div>
+          <div class="stat-label">Discovery</div>
+        </div>
+        <div>
+          <div class="stat-value">£50–150K+</div>
+          <div class="stat-label">Investment</div>
+        </div>
+      </div>
+
+      <div class="dimensions">
+        <div class="dim-item">
+          <div class="dim-icon">
+            <svg viewBox="0 0 16 16" fill="none"><path d="M12 4L4 12M4 4l8 8" stroke="#f87171" stroke-width="1.8" stroke-linecap="round"/></svg>
+          </div>
+          <div class="dim-content">
+            <span class="dim-category">Approach</span>
+            <span class="dim-text dim-text--strike">Interview-led, subjective readouts</span>
+          </div>
+        </div>
+
+        <div class="dim-item">
+          <div class="dim-icon">
+            <svg viewBox="0 0 16 16" fill="none"><path d="M12 4L4 12M4 4l8 8" stroke="#f87171" stroke-width="1.8" stroke-linecap="round"/></svg>
+          </div>
+          <div class="dim-content">
+            <span class="dim-category">Validation</span>
+            <span class="dim-text dim-text--strike">AI-only or human-only. Rarely both.</span>
+          </div>
+        </div>
+
+        <div class="dim-item">
+          <div class="dim-icon">
+            <svg viewBox="0 0 16 16" fill="none"><path d="M12 4L4 12M4 4l8 8" stroke="#f87171" stroke-width="1.8" stroke-linecap="round"/></svg>
+          </div>
+          <div class="dim-content">
+            <span class="dim-category">Output</span>
+            <span class="dim-text dim-text--strike">Long lists of ideas and shelfware</span>
+          </div>
+        </div>
+
+        <div class="dim-item">
+          <div class="dim-icon">
+            <svg viewBox="0 0 16 16" fill="none"><path d="M12 4L4 12M4 4l8 8" stroke="#f87171" stroke-width="1.8" stroke-linecap="round"/></svg>
+          </div>
+          <div class="dim-content">
+            <span class="dim-category">Result</span>
+            <span class="dim-text dim-text--strike">Reports on shelves</span>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Supastack Approach -->
+    <div class="card card--dark fade-up fade-up-d1">
+      <div class="card-label">Supastack Approach</div>
+      <div class="card-title">Days to first insights</div>
+      <div class="card-subtitle">Evidence-led, AI-powered. Human-in-the-Loop validation. Prioritised, feasible initiatives. Execution-ready requirements.</div>
+
+      <div class="stats-row">
+        <div>
+          <div class="stat-value">Days</div>
+          <div class="stat-label">To Insights</div>
+        </div>
+        <div>
+          <div class="stat-value">From £20K</div>
+          <div class="stat-label">All-In</div>
+        </div>
+      </div>
+
+      <div class="dimensions">
+        <div class="dim-item">
+          <div class="dim-icon">
+            <svg viewBox="0 0 16 16" fill="none"><path d="M3 8.5l3.5 3.5L13 4" stroke="#34d399" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg>
+          </div>
+          <div class="dim-content">
+            <span class="dim-category">Approach</span>
+            <span class="dim-text">Evidence-led, AI-powered signal modelling</span>
+          </div>
+        </div>
+
+        <div class="dim-item">
+          <div class="dim-icon">
+            <svg viewBox="0 0 16 16" fill="none"><path d="M3 8.5l3.5 3.5L13 4" stroke="#34d399" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg>
+          </div>
+          <div class="dim-content">
+            <span class="dim-category">Validation</span>
+            <span class="dim-text">Human-in-the-loop alignment with operating leaders</span>
+          </div>
+        </div>
+
+        <div class="dim-item">
+          <div class="dim-icon">
+            <svg viewBox="0 0 16 16" fill="none"><path d="M3 8.5l3.5 3.5L13 4" stroke="#34d399" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg>
+          </div>
+          <div class="dim-content">
+            <span class="dim-category">Output</span>
+            <span class="dim-text">Prioritised, feasible initiatives with clear ROI</span>
+          </div>
+        </div>
+
+        <div class="dim-item">
+          <div class="dim-icon">
+            <svg viewBox="0 0 16 16" fill="none"><path d="M3 8.5l3.5 3.5L13 4" stroke="#34d399" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg>
+          </div>
+          <div class="dim-content">
+            <span class="dim-category">Result</span>
+            <span class="dim-text">Execution-ready requirements, matched resources</span>
+          </div>
+        </div>
+      </div>
+    </div>
+
+  </div>
+</section>
+
+<!-- DIMENSIONS -->
+<div class="h-px bg-gradient-to-r from-transparent via-blue-700/20 to-transparent"></div>
+<section id="dimensions" class="py-24 md:py-36 bg-[#080812] text-white relative overflow-hidden">
+  <div style="background-image:linear-gradient(rgba(29,78,216,.06) 1px,transparent 1px),linear-gradient(90deg,rgba(29,78,216,.06) 1px,transparent 1px);background-size:80px 80px;animation:ss-grid 8s ease-in-out infinite" class="absolute inset-0"></div>
+  <div class="container mx-auto px-4 md:px-6 relative z-10">
+    <div class="text-center max-w-3xl mx-auto mb-12 fade-up">
+      <h2 class="text-4xl md:text-5xl font-bold text-white mb-6">Dimensions of Readiness</h2>
+      <p class="text-xl text-slate-400">Choose your lens. Every initiative scored on Impact × Feasibility.</p>
+    </div>
+    <div class="flex justify-center mb-4 fade-up">
+      <div class="inline-flex rounded-xl border border-white/10 bg-white/[0.03] p-1 gap-1">
+        <button onclick="switchTab('gtm')" id="tab-gtm" class="tab-btn active px-5 py-2.5 rounded-lg text-sm font-semibold text-white transition-all">GTM &amp; RevOps — 6 Dimensions</button>
+        <button onclick="switchTab('partnerships')" id="tab-partnerships" class="tab-btn px-5 py-2.5 rounded-lg text-sm font-semibold text-slate-400 transition-all">Partnerships — 7 Dimensions</button>
+      </div>
+    </div>
+    <p class="text-center text-xs text-slate-500 mb-16 fade-up">Same operating system. Same diagnostic rigour. Different lens.</p>
+
+    <!-- GTM Panel -->
+    <div id="panel-gtm" class="tab-panel active">
+      <div class="grid lg:grid-cols-12 gap-8 items-start">
+        <div class="lg:col-span-3 flex lg:flex-col gap-2 overflow-x-auto lg:overflow-visible pb-4 lg:pb-0">
+          <button onclick="switchDim('gtm',0,this)" class="gtm-btn tab-btn active flex items-center text-left px-5 py-4 rounded-xl border border-blue-700/30 whitespace-nowrap lg:whitespace-normal text-blue-300">
+            <span class="w-2 h-2 rounded-full bg-blue-600 mr-3 shrink-0 gtm-dot" style="box-shadow:0 0 8px rgba(29,78,216,0.6)"></span><span class="font-medium">People &amp; Org</span>
+          </button>
+          <button onclick="switchDim('gtm',1,this)" class="gtm-btn tab-btn flex items-center text-left px-5 py-4 rounded-xl border border-transparent whitespace-nowrap lg:whitespace-normal text-slate-500 hover:text-slate-300"><span class="w-2 h-2 rounded-full bg-transparent mr-3 shrink-0 gtm-dot hidden"></span><span class="font-medium">Data &amp; Intelligence</span></button>
+          <button onclick="switchDim('gtm',2,this)" class="gtm-btn tab-btn flex items-center text-left px-5 py-4 rounded-xl border border-transparent whitespace-nowrap lg:whitespace-normal text-slate-500 hover:text-slate-300"><span class="w-2 h-2 rounded-full bg-transparent mr-3 shrink-0 gtm-dot hidden"></span><span class="font-medium">Technology &amp; Stack</span></button>
+          <button onclick="switchDim('gtm',3,this)" class="gtm-btn tab-btn flex items-center text-left px-5 py-4 rounded-xl border border-transparent whitespace-nowrap lg:whitespace-normal text-slate-500 hover:text-slate-300"><span class="w-2 h-2 rounded-full bg-transparent mr-3 shrink-0 gtm-dot hidden"></span><span class="font-medium">Commercial Strategy</span></button>
+          <button onclick="switchDim('gtm',4,this)" class="gtm-btn tab-btn flex items-center text-left px-5 py-4 rounded-xl border border-transparent whitespace-nowrap lg:whitespace-normal text-slate-500 hover:text-slate-300"><span class="w-2 h-2 rounded-full bg-transparent mr-3 shrink-0 gtm-dot hidden"></span><span class="font-medium">Operations &amp; Process</span></button>
+          <button onclick="switchDim('gtm',5,this)" class="gtm-btn tab-btn flex items-center text-left px-5 py-4 rounded-xl border border-transparent whitespace-nowrap lg:whitespace-normal text-slate-500 hover:text-slate-300"><span class="w-2 h-2 rounded-full bg-transparent mr-3 shrink-0 gtm-dot hidden"></span><span class="font-medium">Financial &amp; Economics</span></button>
+        </div>
+        <div class="lg:col-span-9" id="gtm-panels">
+          <div class="gtm-panel bg-white/[0.03] border border-white/[0.06] rounded-3xl p-8 md:p-12 backdrop-blur-sm"><h3 class="text-3xl font-bold text-white mb-4">People &amp; Org Readiness</h3><p class="text-lg text-slate-400 mb-12 max-w-3xl">Structure, roles, incentives, leadership coverage. We assess change capacity, leadership sponsorship, and the incentives to absorb AI-driven workflows.</p><div class="grid md:grid-cols-3 gap-8"><div class="bg-white/[0.03] p-6 rounded-2xl border border-white/[0.06] hover:border-blue-700/30 hover:bg-white/[0.06] transition-all duration-300"><h4 class="text-blue-400 font-bold mb-3">Organisational Structure</h4><p class="text-slate-400 text-sm leading-relaxed">Role clarity, reporting lines, and team design for AI-driven change.</p></div><div class="bg-white/[0.03] p-6 rounded-2xl border border-white/[0.06] hover:border-blue-700/30 hover:bg-white/[0.06] transition-all duration-300"><h4 class="text-blue-400 font-bold mb-3">Role Evolution</h4><p class="text-slate-400 text-sm leading-relaxed">Skills inventory and capability gaps for new AI-enabled workflows.</p></div><div class="bg-white/[0.03] p-6 rounded-2xl border border-white/[0.06] hover:border-blue-700/30 hover:bg-white/[0.06] transition-all duration-300"><h4 class="text-blue-400 font-bold mb-3">Leadership Alignment</h4><p class="text-slate-400 text-sm leading-relaxed">Executive sponsorship strength and change governance readiness.</p></div></div></div>
+          <div class="gtm-panel hidden bg-white/[0.03] border border-white/[0.06] rounded-3xl p-8 md:p-12 backdrop-blur-sm"><h3 class="text-3xl font-bold text-white mb-4">Data &amp; Revenue Intelligence</h3><p class="text-lg text-slate-400 mb-12 max-w-3xl">Metrics completeness, attribution, forecasting. Integrity of pipeline, customer, and financial signals — and how they inform prioritisation.</p><div class="grid md:grid-cols-3 gap-8"><div class="bg-white/[0.03] p-6 rounded-2xl border border-white/[0.06] hover:border-blue-700/30 hover:bg-white/[0.06] transition-all duration-300"><h4 class="text-blue-400 font-bold mb-3">Data Quality</h4><p class="text-slate-400 text-sm leading-relaxed">CRM hygiene, data governance standards, and completeness across key objects.</p></div><div class="bg-white/[0.03] p-6 rounded-2xl border border-white/[0.06] hover:border-blue-700/30 hover:bg-white/[0.06] transition-all duration-300"><h4 class="text-blue-400 font-bold mb-3">Revenue Signals</h4><p class="text-slate-400 text-sm leading-relaxed">Pipeline visibility, attribution models, and forecasting accuracy.</p></div><div class="bg-white/[0.03] p-6 rounded-2xl border border-white/[0.06] hover:border-blue-700/30 hover:bg-white/[0.06] transition-all duration-300"><h4 class="text-blue-400 font-bold mb-3">Intelligence Cadence</h4><p class="text-slate-400 text-sm leading-relaxed">Reporting rhythms, review cadences, and decision-making quality.</p></div></div></div>
+          <div class="gtm-panel hidden bg-white/[0.03] border border-white/[0.06] rounded-3xl p-8 md:p-12 backdrop-blur-sm"><h3 class="text-3xl font-bold text-white mb-4">Technology &amp; Stack</h3><p class="text-lg text-slate-400 mb-12 max-w-3xl">CRM, RevOps tooling, automation, AI adoption. Systems architecture, interoperability, and technical debt tolerance for new AI services.</p><div class="grid md:grid-cols-3 gap-8"><div class="bg-white/[0.03] p-6 rounded-2xl border border-white/[0.06] hover:border-blue-700/30 hover:bg-white/[0.06] transition-all duration-300"><h4 class="text-blue-400 font-bold mb-3">Stack Architecture</h4><p class="text-slate-400 text-sm leading-relaxed">Tech stack coherence, integration maturity, and vendor coverage assessment.</p></div><div class="bg-white/[0.03] p-6 rounded-2xl border border-white/[0.06] hover:border-blue-700/30 hover:bg-white/[0.06] transition-all duration-300"><h4 class="text-blue-400 font-bold mb-3">AI Enablement</h4><p class="text-slate-400 text-sm leading-relaxed">Current AI tool adoption, use case readiness, and adoption barriers.</p></div><div class="bg-white/[0.03] p-6 rounded-2xl border border-white/[0.06] hover:border-blue-700/30 hover:bg-white/[0.06] transition-all duration-300"><h4 class="text-blue-400 font-bold mb-3">Automation Framework</h4><p class="text-slate-400 text-sm leading-relaxed">Workflow automation coverage and process automation opportunity mapping.</p></div></div></div>
+          <div class="gtm-panel hidden bg-white/[0.03] border border-white/[0.06] rounded-3xl p-8 md:p-12 backdrop-blur-sm"><h3 class="text-3xl font-bold text-white mb-4">Commercial Strategy &amp; GTM</h3><p class="text-lg text-slate-400 mb-12 max-w-3xl">ICP, pricing, routes to market, positioning. Product-market motion, route-to-market coverage, and AI leverage in customer experience.</p><div class="grid md:grid-cols-3 gap-8"><div class="bg-white/[0.03] p-6 rounded-2xl border border-white/[0.06] hover:border-blue-700/30 hover:bg-white/[0.06] transition-all duration-300"><h4 class="text-blue-400 font-bold mb-3">ICP Definition</h4><p class="text-slate-400 text-sm leading-relaxed">Ideal customer profile clarity, segmentation quality, and market focus.</p></div><div class="bg-white/[0.03] p-6 rounded-2xl border border-white/[0.06] hover:border-blue-700/30 hover:bg-white/[0.06] transition-all duration-300"><h4 class="text-blue-400 font-bold mb-3">Pricing &amp; Packaging</h4><p class="text-slate-400 text-sm leading-relaxed">Monetisation model coherence and value-based pricing maturity.</p></div><div class="bg-white/[0.03] p-6 rounded-2xl border border-white/[0.06] hover:border-blue-700/30 hover:bg-white/[0.06] transition-all duration-300"><h4 class="text-blue-400 font-bold mb-3">Go-to-Market Motion</h4><p class="text-slate-400 text-sm leading-relaxed">Channel coverage, motion alignment, and sales play documentation.</p></div></div></div>
+          <div class="gtm-panel hidden bg-white/[0.03] border border-white/[0.06] rounded-3xl p-8 md:p-12 backdrop-blur-sm"><h3 class="text-3xl font-bold text-white mb-4">Operations &amp; Process</h3><p class="text-lg text-slate-400 mb-12 max-w-3xl">Lead management, sales process, customer lifecycle. Workflow maturity, automation coverage, and the rituals that keep teams aligned.</p><div class="grid md:grid-cols-3 gap-8"><div class="bg-white/[0.03] p-6 rounded-2xl border border-white/[0.06] hover:border-blue-700/30 hover:bg-white/[0.06] transition-all duration-300"><h4 class="text-blue-400 font-bold mb-3">Process Documentation</h4><p class="text-slate-400 text-sm leading-relaxed">Documented workflows, SOPs, and playbook completeness across functions.</p></div><div class="bg-white/[0.03] p-6 rounded-2xl border border-white/[0.06] hover:border-blue-700/30 hover:bg-white/[0.06] transition-all duration-300"><h4 class="text-blue-400 font-bold mb-3">RevOps Command Centre</h4><p class="text-slate-400 text-sm leading-relaxed">Cross-functional alignment, operating rhythm, and RevOps maturity level.</p></div><div class="bg-white/[0.03] p-6 rounded-2xl border border-white/[0.06] hover:border-blue-700/30 hover:bg-white/[0.06] transition-all duration-300"><h4 class="text-blue-400 font-bold mb-3">Continuous Improvement</h4><p class="text-slate-400 text-sm leading-relaxed">Retrospective culture, iteration speed, and metric-driven optimisation.</p></div></div></div>
+          <div class="gtm-panel hidden bg-white/[0.03] border border-white/[0.06] rounded-3xl p-8 md:p-12 backdrop-blur-sm"><h3 class="text-3xl font-bold text-white mb-4">Financial &amp; Unit Economics</h3><p class="text-lg text-slate-400 mb-12 max-w-3xl">CAC/LTV, margin structure, scalability. Margin sensitivity, capital allocation, and the ROI guardrails that shape every pilot.</p><div class="grid md:grid-cols-3 gap-8"><div class="bg-white/[0.03] p-6 rounded-2xl border border-white/[0.06] hover:border-blue-700/30 hover:bg-white/[0.06] transition-all duration-300"><h4 class="text-blue-400 font-bold mb-3">Unit Economics</h4><p class="text-slate-400 text-sm leading-relaxed">CAC, LTV, payback period, and gross margin visibility and accuracy.</p></div><div class="bg-white/[0.03] p-6 rounded-2xl border border-white/[0.06] hover:border-blue-700/30 hover:bg-white/[0.06] transition-all duration-300"><h4 class="text-blue-400 font-bold mb-3">Capital Allocation</h4><p class="text-slate-400 text-sm leading-relaxed">Investment prioritisation framework and ROI tracking infrastructure.</p></div><div class="bg-white/[0.03] p-6 rounded-2xl border border-white/[0.06] hover:border-blue-700/30 hover:bg-white/[0.06] transition-all duration-300"><h4 class="text-blue-400 font-bold mb-3">Board Visibility</h4><p class="text-slate-400 text-sm leading-relaxed">Executive reporting quality and board-level financial narrative coherence.</p></div></div></div>
+        </div>
+      </div>
+      <p class="text-center text-slate-500 text-sm mt-12">You get a prioritised portfolio, not a long list of ideas. <strong class="text-slate-400">140 criteria. 6 dimensions.</strong> Built from real GTM transformations.</p>
+    </div>
+
+    <!-- Partnerships Panel -->
+    <div id="panel-partnerships" class="tab-panel">
+      <div class="grid lg:grid-cols-12 gap-8 items-start">
+        <div class="lg:col-span-3 flex lg:flex-col gap-2 overflow-x-auto lg:overflow-visible pb-4 lg:pb-0">
+          <button onclick="switchDim('p',0,this)" class="p-btn tab-btn active flex items-center text-left px-5 py-4 rounded-xl border border-blue-700/30 whitespace-nowrap lg:whitespace-normal text-blue-300"><span class="w-2 h-2 rounded-full bg-blue-600 mr-3 shrink-0" style="box-shadow:0 0 8px rgba(29,78,216,0.6)"></span><span class="font-medium">Strategy &amp; Planning</span></button>
+          <button onclick="switchDim('p',1,this)" class="p-btn tab-btn flex items-center text-left px-5 py-4 rounded-xl border border-transparent whitespace-nowrap lg:whitespace-normal text-slate-500 hover:text-slate-300"><span class="font-medium">Program Design</span></button>
+          <button onclick="switchDim('p',2,this)" class="p-btn tab-btn flex items-center text-left px-5 py-4 rounded-xl border border-transparent whitespace-nowrap lg:whitespace-normal text-slate-500 hover:text-slate-300"><span class="font-medium">Sourcing &amp; Onboarding</span></button>
+          <button onclick="switchDim('p',3,this)" class="p-btn tab-btn flex items-center text-left px-5 py-4 rounded-xl border border-transparent whitespace-nowrap lg:whitespace-normal text-slate-500 hover:text-slate-300"><span class="font-medium">Enablement &amp; Lifecycle</span></button>
+          <button onclick="switchDim('p',4,this)" class="p-btn tab-btn flex items-center text-left px-5 py-4 rounded-xl border border-transparent whitespace-nowrap lg:whitespace-normal text-slate-500 hover:text-slate-300"><span class="font-medium">Technology</span></button>
+          <button onclick="switchDim('p',5,this)" class="p-btn tab-btn flex items-center text-left px-5 py-4 rounded-xl border border-transparent whitespace-nowrap lg:whitespace-normal text-slate-500 hover:text-slate-300"><span class="font-medium">Measurement &amp; Growth</span></button>
+          <button onclick="switchDim('p',6,this)" class="p-btn tab-btn flex items-center text-left px-5 py-4 rounded-xl border border-transparent whitespace-nowrap lg:whitespace-normal text-slate-500 hover:text-slate-300"><span class="font-medium">Leadership &amp; Org</span></button>
+        </div>
+        <div class="lg:col-span-9" id="p-panels">
+          <div class="p-panel bg-white/[0.03] border border-white/[0.06] rounded-3xl p-8 md:p-12 backdrop-blur-sm"><h3 class="text-3xl font-bold text-white mb-4">Partnership Strategy &amp; Planning</h3><p class="text-lg text-slate-400 mb-12 max-w-3xl">How partnerships connect to your GTM plan, revenue targets, and market expansion. Ideal Partner Profiles, partner motions, TAM coverage, and competitive intelligence.</p><div class="grid md:grid-cols-3 gap-8"><div class="bg-white/[0.03] p-6 rounded-2xl border border-white/[0.06] hover:border-blue-700/30 hover:bg-white/[0.06] transition-all duration-300"><h4 class="text-blue-400 font-bold mb-3">Strategic Alignment &amp; Vision</h4><p class="text-slate-400 text-sm leading-relaxed">Partnership strategy documented, aligned to GTM and product roadmap, with clear revenue contribution targets and executive sponsorship.</p></div><div class="bg-white/[0.03] p-6 rounded-2xl border border-white/[0.06] hover:border-blue-700/30 hover:bg-white/[0.06] transition-all duration-300"><h4 class="text-blue-400 font-bold mb-3">IPP &amp; TAM Coverage</h4><p class="text-slate-400 text-sm leading-relaxed">Ideal Partner Profiles scored against all partner types, with TAM mapping and partner coverage overlay driving recruitment priorities.</p></div><div class="bg-white/[0.03] p-6 rounded-2xl border border-white/[0.06] hover:border-blue-700/30 hover:bg-white/[0.06] transition-all duration-300"><h4 class="text-blue-400 font-bold mb-3">Market Intelligence</h4><p class="text-slate-400 text-sm leading-relaxed">Competitive ecosystem monitoring, portfolio risk modelling, and strategy refresh cadence informed by market signals.</p></div></div></div>
+          <div class="p-panel hidden bg-white/[0.03] border border-white/[0.06] rounded-3xl p-8 md:p-12 backdrop-blur-sm"><h3 class="text-3xl font-bold text-white mb-4">Program Design &amp; Operating Model</h3><p class="text-lg text-slate-400 mb-12 max-w-3xl">The architecture of your partner programme. Bow Tie Funnel lifecycle, org design, RACI, Partner Ops capacity, and the infrastructure that makes partnerships repeatable and scalable.</p><div class="grid md:grid-cols-3 gap-8"><div class="bg-white/[0.03] p-6 rounded-2xl border border-white/[0.06] hover:border-blue-700/30 hover:bg-white/[0.06] transition-all duration-300"><h4 class="text-blue-400 font-bold mb-3">Bow Tie Lifecycle</h4><p class="text-slate-400 text-sm leading-relaxed">Full partner lifecycle mapped from Identify through Expand using the Bow Tie Funnel model with KPIs and owners at each stage.</p></div><div class="bg-white/[0.03] p-6 rounded-2xl border border-white/[0.06] hover:border-blue-700/30 hover:bg-white/[0.06] transition-all duration-300"><h4 class="text-blue-400 font-bold mb-3">Org Design &amp; RACI</h4><p class="text-slate-400 text-sm leading-relaxed">Documented roles across all lifecycle stages with cross-functional RACI — every handoff explicitly accountable.</p></div><div class="bg-white/[0.03] p-6 rounded-2xl border border-white/[0.06] hover:border-blue-700/30 hover:bg-white/[0.06] transition-all duration-300"><h4 class="text-blue-400 font-bold mb-3">Partner Ops &amp; Governance</h4><p class="text-slate-400 text-sm leading-relaxed">Dedicated Partner Ops function with attribution logic, program health reviews, and governance forums.</p></div></div></div>
+          <div class="p-panel hidden bg-white/[0.03] border border-white/[0.06] rounded-3xl p-8 md:p-12 backdrop-blur-sm"><h3 class="text-3xl font-bold text-white mb-4">Sourcing, Recruitment &amp; Onboarding</h3><p class="text-lg text-slate-400 mb-12 max-w-3xl">How you find, qualify, and activate new partners. Outbound and inbound sourcing funnels, IPP-based qualification, contracting speed, and time-to-first-value activation.</p><div class="grid md:grid-cols-3 gap-8"><div class="bg-white/[0.03] p-6 rounded-2xl border border-white/[0.06] hover:border-blue-700/30 hover:bg-white/[0.06] transition-all duration-300"><h4 class="text-blue-400 font-bold mb-3">Partner Sourcing</h4><p class="text-slate-400 text-sm leading-relaxed">Structured outbound and inbound sourcing strategies using IPP targeting, market signals, and AI-assisted prospect identification.</p></div><div class="bg-white/[0.03] p-6 rounded-2xl border border-white/[0.06] hover:border-blue-700/30 hover:bg-white/[0.06] transition-all duration-300"><h4 class="text-blue-400 font-bold mb-3">Discovery &amp; Qualification</h4><p class="text-slate-400 text-sm leading-relaxed">Evidence-based qualification scoring predicting partner success — IPP fit and conversion tracking across the full funnel.</p></div><div class="bg-white/[0.03] p-6 rounded-2xl border border-white/[0.06] hover:border-blue-700/30 hover:bg-white/[0.06] transition-all duration-300"><h4 class="text-blue-400 font-bold mb-3">Onboarding &amp; Activation</h4><p class="text-slate-400 text-sm leading-relaxed">Motion-specific onboarding playbooks with SLA-tracked completion and first-90-day activation benchmarks.</p></div></div></div>
+          <div class="p-panel hidden bg-white/[0.03] border border-white/[0.06] rounded-3xl p-8 md:p-12 backdrop-blur-sm"><h3 class="text-3xl font-bold text-white mb-4">Enablement &amp; Lifecycle Support</h3><p class="text-lg text-slate-400 mb-12 max-w-3xl">How you equip partners to sell, deliver, and succeed — and how you manage the full lifecycle from activation through expansion to sunset.</p><div class="grid md:grid-cols-3 gap-8"><div class="bg-white/[0.03] p-6 rounded-2xl border border-white/[0.06] hover:border-blue-700/30 hover:bg-white/[0.06] transition-all duration-300"><h4 class="text-blue-400 font-bold mb-3">Activation Efficiency</h4><p class="text-slate-400 text-sm leading-relaxed">Onboarding completion rates, Time-to-First-Lead, and first-90-day activation tracked against SLAs with AI-driven performance alerts.</p></div><div class="bg-white/[0.03] p-6 rounded-2xl border border-white/[0.06] hover:border-blue-700/30 hover:bg-white/[0.06] transition-all duration-300"><h4 class="text-blue-400 font-bold mb-3">Enablement Toolkit</h4><p class="text-slate-400 text-sm leading-relaxed">Partner Welcome Guides, ICP slides, campaign templates, and deal registration processes — segmented by tier and motion, usage-tracked.</p></div><div class="bg-white/[0.03] p-6 rounded-2xl border border-white/[0.06] hover:border-blue-700/30 hover:bg-white/[0.06] transition-all duration-300"><h4 class="text-blue-400 font-bold mb-3">Lifecycle Management</h4><p class="text-slate-400 text-sm leading-relaxed">Expand, Nurture, and Sunset pathways governed by data: QBR cadence, engagement scoring, tiering reviews, and measured exit criteria.</p></div></div></div>
+          <div class="p-panel hidden bg-white/[0.03] border border-white/[0.06] rounded-3xl p-8 md:p-12 backdrop-blur-sm"><h3 class="text-3xl font-bold text-white mb-4">Technology &amp; Infrastructure</h3><p class="text-lg text-slate-400 mb-12 max-w-3xl">The systems powering partner operations. CRM integration, PRM portals, deal registration, analytics, workflow automation, and the data layer that removes friction.</p><div class="grid md:grid-cols-3 gap-8"><div class="bg-white/[0.03] p-6 rounded-2xl border border-white/[0.06] hover:border-blue-700/30 hover:bg-white/[0.06] transition-all duration-300"><h4 class="text-blue-400 font-bold mb-3">CRM &amp; Data Management</h4><p class="text-slate-400 text-sm leading-relaxed">Partner data tracked in CRM with lifecycle stage visibility, attribution fields, and data quality standards enforced across all partner types.</p></div><div class="bg-white/[0.03] p-6 rounded-2xl border border-white/[0.06] hover:border-blue-700/30 hover:bg-white/[0.06] transition-all duration-300"><h4 class="text-blue-400 font-bold mb-3">PRM &amp; Partner Portal</h4><p class="text-slate-400 text-sm leading-relaxed">Dedicated partner portal with tier-specific access, enablement assets, deal registration, and AI-personalised content delivery.</p></div><div class="bg-white/[0.03] p-6 rounded-2xl border border-white/[0.06] hover:border-blue-700/30 hover:bg-white/[0.06] transition-all duration-300"><h4 class="text-blue-400 font-bold mb-3">Analytics &amp; Automation</h4><p class="text-slate-400 text-sm leading-relaxed">Live dashboards, automated deal routing, workflow triggers across lifecycle stages, and reporting infrastructure connecting activity to revenue.</p></div></div></div>
+          <div class="p-panel hidden bg-white/[0.03] border border-white/[0.06] rounded-3xl p-8 md:p-12 backdrop-blur-sm"><h3 class="text-3xl font-bold text-white mb-4">Measurement, Growth &amp; Optimisation</h3><p class="text-lg text-slate-400 mb-12 max-w-3xl">How you track what's working, scale what converts, and exit what doesn't. KPI frameworks, attribution, tiering, and benchmarking that drive continuous improvement.</p><div class="grid md:grid-cols-3 gap-8"><div class="bg-white/[0.03] p-6 rounded-2xl border border-white/[0.06] hover:border-blue-700/30 hover:bg-white/[0.06] transition-all duration-300"><h4 class="text-blue-400 font-bold mb-3">KPI Framework &amp; Attribution</h4><p class="text-slate-400 text-sm leading-relaxed">Partner-sourced, partner-influenced, and partner-touched attribution enforced consistently with full revenue tracking.</p></div><div class="bg-white/[0.03] p-6 rounded-2xl border border-white/[0.06] hover:border-blue-700/30 hover:bg-white/[0.06] transition-all duration-300"><h4 class="text-blue-400 font-bold mb-3">Performance &amp; Tiering</h4><p class="text-slate-400 text-sm leading-relaxed">Scorecard-driven reviews with tiering criteria, leading indicators, and clear consequence models for underperformance.</p></div><div class="bg-white/[0.03] p-6 rounded-2xl border border-white/[0.06] hover:border-blue-700/30 hover:bg-white/[0.06] transition-all duration-300"><h4 class="text-blue-400 font-bold mb-3">Benchmarking &amp; Growth</h4><p class="text-slate-400 text-sm leading-relaxed">Industry benchmarking and growth planning for top partners — new geographies, new products, new segments.</p></div></div></div>
+          <div class="p-panel hidden bg-white/[0.03] border border-white/[0.06] rounded-3xl p-8 md:p-12 backdrop-blur-sm"><h3 class="text-3xl font-bold text-white mb-4">Leadership &amp; Organisational Readiness</h3><p class="text-lg text-slate-400 mb-12 max-w-3xl">Executive sponsorship, organisational structure, cross-functional alignment, incentive design, and the leadership maturity required to make partnerships a strategic function.</p><div class="grid md:grid-cols-3 gap-8"><div class="bg-white/[0.03] p-6 rounded-2xl border border-white/[0.06] hover:border-blue-700/30 hover:bg-white/[0.06] transition-all duration-300"><h4 class="text-blue-400 font-bold mb-3">Executive Sponsorship</h4><p class="text-slate-400 text-sm leading-relaxed">Board-level accountability for partnership revenue with named C-suite sponsors, allocated budget, and quarterly business reviews.</p></div><div class="bg-white/[0.03] p-6 rounded-2xl border border-white/[0.06] hover:border-blue-700/30 hover:bg-white/[0.06] transition-all duration-300"><h4 class="text-blue-400 font-bold mb-3">Cross-Functional Alignment</h4><p class="text-slate-400 text-sm leading-relaxed">Defined RACI across sales, marketing, product, and CS for partner-related activities — eliminating internal friction.</p></div><div class="bg-white/[0.03] p-6 rounded-2xl border border-white/[0.06] hover:border-blue-700/30 hover:bg-white/[0.06] transition-all duration-300"><h4 class="text-blue-400 font-bold mb-3">Incentive &amp; Culture</h4><p class="text-slate-400 text-sm leading-relaxed">Compensation structures, incentive alignment, and organisational culture assessed for partnership readiness.</p></div></div></div>
+        </div>
+      </div>
+      <p class="text-center text-slate-500 text-sm mt-12">You get a prioritised portfolio, not a long list of ideas. <strong class="text-slate-400">164 criteria. 7 dimensions.</strong> Built from real partnerships transformations.</p>
+    </div>
+  </div>
+</section>
+
+<!-- RESULTS -->
+<div class="h-px bg-gradient-to-r from-transparent via-blue-700/30 to-transparent"></div>
+<section id="results" class="py-24 md:py-36 bg-white relative overflow-hidden">
+  <div class="container mx-auto px-4 md:px-6">
+    <div class="text-center max-w-3xl mx-auto mb-20 fade-up">
+      <h2 class="text-4xl md:text-5xl font-bold text-slate-900 mb-6">Proven Results</h2>
+      <p class="text-xl text-slate-500">Mid-market operators choose SupaStack to compress the time between recognising AI potential and capturing measurable value.</p>
+    </div>
+    <div class="grid md:grid-cols-2 gap-8 mb-16">
+      <div class="fade-up bg-white p-8 rounded-2xl shadow-sm border border-slate-100 hover:shadow-lg hover:shadow-blue-100/30 hover:-translate-y-1 transition-all duration-300">
+        <div class="text-5xl font-bold text-transparent bg-clip-text bg-gradient-to-r from-blue-800 to-blue-600 mb-4">[METRIC]</div>
+        <p class="text-slate-700 text-lg">Partnership programme restructured and operationalised for a leading fintech platform.</p>
+        <span class="text-xs font-bold text-slate-400 uppercase tracking-wider mt-4 block">Teya · Fintech</span>
+      </div>
+      <div class="fade-up fade-up-d1 bg-white p-8 rounded-2xl shadow-sm border border-slate-100 hover:shadow-lg hover:shadow-blue-100/30 hover:-translate-y-1 transition-all duration-300">
+        <div class="text-5xl font-bold text-transparent bg-clip-text bg-gradient-to-r from-blue-800 to-blue-600 mb-4">[METRIC]</div>
+        <p class="text-slate-700 text-lg">GTM diagnostic and execution blueprint delivered for a B2B services leader.</p>
+        <span class="text-xs font-bold text-slate-400 uppercase tracking-wider mt-4 block">ET2C International · B2B Services</span>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- TRUSTED BY -->
+<section class="py-16 bg-white/50 border-y border-slate-100/50 backdrop-blur-sm">
+  <div class="container mx-auto px-4 md:px-6">
+    <div class="fade-up"><p class="text-center text-slate-400 text-xs font-bold uppercase tracking-[0.2em] mb-10">Trusted by Revenue Leaders at</p></div>
+    <div class="flex flex-wrap justify-center items-center gap-x-16 gap-y-8">
+      <div class="fade-up"><span class="text-xl font-bold text-slate-300 hover:text-blue-500 transition-colors duration-300 cursor-default">Teya</span></div>
+      <div class="fade-up fade-up-d1"><span class="text-xl font-bold text-slate-300 hover:text-blue-500 transition-colors duration-300 cursor-default">ET2C International</span></div>
+    </div>
+  </div>
+</section>
+
+<!-- CTA -->
+<section id="cta" class="py-24 md:py-36 bg-[#f8f8fa]">
+  <div class="container mx-auto px-4 md:px-6">
+    <div class="fade-up">
+      <div style="background:linear-gradient(135deg,#1e3a8a,#1e40af,#0369a1);background-size:200% 200%;animation:ss-grad 6s ease infinite" class="relative rounded-[3rem] p-12 md:p-24 text-center text-white overflow-hidden shadow-2xl">
+        <div class="absolute top-0 left-0 w-64 h-64 bg-white/10 rounded-full blur-[80px] -translate-x-1/2 -translate-y-1/2"></div>
+        <div class="absolute bottom-0 right-0 w-96 h-96 bg-sky-400/20 rounded-full blur-[100px] translate-x-1/3 translate-y-1/3"></div>
+        <div class="relative z-10 max-w-4xl mx-auto">
+          <h2 class="text-4xl md:text-6xl font-bold mb-8">Start With a Free Web Scan</h2>
+          <p class="text-xl md:text-2xl text-white/80 mb-12 leading-relaxed">See your readiness score across multiple dimensions, your competitive gaps vs. 5 peers, and your top 3 initiatives — in minutes, not months.</p>
+          <div class="flex flex-col sm:flex-row gap-4 justify-center">
+            <a href="/signup" class="inline-flex items-center justify-center h-16 px-10 rounded-xl bg-white text-blue-800 font-bold text-lg shadow-xl shadow-black/10 hover:shadow-2xl transition-shadow duration-300">Get My Free Assessment</a>
+            <a href="how-it-works.html" class="inline-flex items-center justify-center h-16 px-10 rounded-xl bg-white/10 backdrop-blur-sm border border-white/20 text-white font-bold text-lg hover:bg-white/20 transition-all duration-300">Review the Process</a>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- FOOTER -->
+<footer class="bg-[#0a0a0f] border-t border-white/5 py-16">
+  <div class="container mx-auto px-4 md:px-6 flex flex-col md:flex-row justify-between items-center gap-6 text-sm text-slate-500">
+    <strong class="text-white text-base font-bold">SupaStack Ltd</strong>
+    <div class="flex flex-col md:flex-row items-center gap-4 md:gap-8">
+      <a href="how-it-works.html" class="hover:text-slate-300 transition-colors">How It Works</a>
+      <a href="pricing.html" class="hover:text-slate-300 transition-colors">Pricing</a>
+      <a href="about.html" class="hover:text-slate-300 transition-colors">About</a>
+    </div>
+    <span>Company number 16869878 · Registered in England and Wales</span>
+    <span>© 2026 SupaStack. All rights reserved.</span>
+  </div>
+</footer>
+
+<script>
+  window.addEventListener('scroll', () => {
+    const h = document.getElementById('site-header');
+    h.classList.toggle('scrolled', window.scrollY > 20);
+  });
+
+  const observer = new IntersectionObserver((entries) => {
+    entries.forEach(e => { if (e.isIntersecting) e.target.classList.add('visible'); });
+  }, { threshold: 0.1 });
+  document.querySelectorAll('.fade-up').forEach(el => observer.observe(el));
+  setTimeout(() => document.querySelectorAll('#top .fade-up').forEach(el => el.classList.add('visible')), 50);
+
+  function switchTab(tab) {
+    ['gtm','partnerships'].forEach(t => {
+      const panel = document.getElementById('panel-'+t);
+      const btn = document.getElementById('tab-'+t);
+      const isActive = t === tab;
+      panel.classList.toggle('active', isActive);
+      btn.classList.toggle('active', isActive);
+      btn.classList.toggle('text-white', isActive);
+      btn.classList.toggle('text-slate-400', !isActive);
+    });
+  }
+
+  function switchDim(prefix, idx, btn) {
+    const isGtm = prefix === 'gtm';
+    const panels = document.querySelectorAll(isGtm ? '.gtm-panel' : '.p-panel');
+    const buttons = document.querySelectorAll(isGtm ? '.gtm-btn' : '.p-btn');
+    panels.forEach((p, i) => p.classList.toggle('hidden', i !== idx));
+    buttons.forEach(b => {
+      b.classList.remove('active','border-blue-700/30','text-blue-300');
+      b.classList.add('border-transparent','text-slate-500');
+    });
+    btn.classList.add('active','border-blue-700/30','text-blue-300');
+    btn.classList.remove('border-transparent','text-slate-500');
+  }
+</script>
+</body>
+</html>

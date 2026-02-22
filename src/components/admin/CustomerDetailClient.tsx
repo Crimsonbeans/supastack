@@ -21,8 +21,6 @@ import {
     Calendar,
     Briefcase,
     ArrowUpRight,
-    Download,
-    FolderOpen,
 } from 'lucide-react'
 import { toast } from 'sonner'
 import RequirementsForm from '@/components/admin/RequirementsForm'
@@ -78,16 +76,6 @@ interface DynamicDetails {
     auto_approve_requirements: boolean
     requirements_form_status: string
     requirements_submitted_at: string | null
-}
-
-interface UploadedDocItem {
-    id: string
-    file_name: string
-    file_size: number
-    file_type: string
-    created_at: string
-    uploaded_by: string
-    download_url?: string | null
 }
 
 type SectionKey = 'overview' | 'phase1_report' | 'phase2_requirements' | 'phase2_report_1' | 'phase2_report_2' | 'phase2_report_3' | 'phase2_report_4' | 'phase2_report_5'
@@ -593,11 +581,6 @@ function OverviewContent({
                 </div>
             </div>
 
-            {/* Uploaded Documents */}
-            {dynamicDetails?.assessment_id && (
-                <DocumentsOverviewPanel assessmentId={dynamicDetails.assessment_id} />
-            )}
-
             {/* Journey Timeline */}
             <div>
                 <h2 className="text-sm font-semibold text-slate-900 mb-4">Customer Journey</h2>
@@ -973,107 +956,6 @@ function Phase2RequirementsContent({
     )
 }
 
-
-// --- Documents Overview Panel (for admin overview) ---
-
-function DocumentsOverviewPanel({ assessmentId }: { assessmentId: string }) {
-    const [documents, setDocuments] = useState<Record<string, UploadedDocItem[]>>({})
-    const [loading, setLoading] = useState(true)
-
-    useEffect(() => {
-        fetch(`/api/list-documents?assessment_id=${assessmentId}&mode=admin`)
-            .then(res => res.json())
-            .then(data => {
-                if (data.documents) setDocuments(data.documents)
-            })
-            .catch(() => {})
-            .finally(() => setLoading(false))
-    }, [assessmentId])
-
-    const allDocs = Object.entries(documents).flatMap(([slotKey, docs]) =>
-        docs.map(d => ({ ...d, slotKey }))
-    )
-
-    const formatFileSize = (bytes: number) => {
-        if (bytes < 1024) return `${bytes} B`
-        if (bytes < 1024 * 1024) return `${(bytes / 1024).toFixed(0)} KB`
-        return `${(bytes / (1024 * 1024)).toFixed(1)} MB`
-    }
-
-    if (loading) {
-        return (
-            <div className="mb-8">
-                <h2 className="text-sm font-semibold text-slate-900 mb-3">Uploaded Documents</h2>
-                <div className="bg-slate-50 rounded-xl border border-slate-200 p-5 flex items-center justify-center">
-                    <Loader2 className="w-4 h-4 animate-spin text-slate-400" />
-                    <span className="ml-2 text-sm text-slate-400">Loading documents...</span>
-                </div>
-            </div>
-        )
-    }
-
-    return (
-        <div className="mb-8">
-            <div className="flex items-center justify-between mb-3">
-                <h2 className="text-sm font-semibold text-slate-900">Uploaded Documents</h2>
-                <span className="text-[11px] text-slate-400">{allDocs.length} file{allDocs.length !== 1 ? 's' : ''}</span>
-            </div>
-            <div className="bg-slate-50 rounded-xl border border-slate-200 overflow-hidden">
-                {allDocs.length === 0 ? (
-                    <div className="p-5 text-center">
-                        <FolderOpen className="w-8 h-8 text-slate-300 mx-auto mb-2" />
-                        <p className="text-sm text-slate-400">No documents uploaded yet</p>
-                    </div>
-                ) : (
-                    <div className="divide-y divide-slate-100">
-                        {allDocs.map(doc => (
-                            <div key={doc.id} className="flex items-center justify-between gap-3 px-4 py-2.5">
-                                <div className="flex items-center gap-2.5 min-w-0 flex-1">
-                                    <FileText className="w-4 h-4 text-slate-400 shrink-0" />
-                                    <div className="min-w-0 flex-1">
-                                        {doc.download_url ? (
-                                            <a
-                                                href={doc.download_url}
-                                                target="_blank"
-                                                rel="noopener noreferrer"
-                                                className="text-[12px] text-indigo-600 hover:text-indigo-700 truncate block underline decoration-indigo-200 hover:decoration-indigo-400"
-                                            >
-                                                {doc.file_name}
-                                            </a>
-                                        ) : (
-                                            <span className="text-[12px] text-slate-700 truncate block">{doc.file_name}</span>
-                                        )}
-                                        <span className="text-[10px] text-slate-400">
-                                            {formatFileSize(doc.file_size)} &middot; {new Date(doc.created_at).toLocaleDateString()}
-                                            {doc.slotKey === '__other__' ? ' &middot; Other' : ''}
-                                        </span>
-                                    </div>
-                                </div>
-                                <div className="flex items-center gap-2 shrink-0">
-                                    <span className={`text-[9px] font-medium px-1.5 py-0.5 rounded ${
-                                        doc.uploaded_by === 'admin' ? 'bg-indigo-50 text-indigo-600' : 'bg-emerald-50 text-emerald-600'
-                                    }`}>
-                                        {doc.uploaded_by}
-                                    </span>
-                                    {doc.download_url && (
-                                        <a
-                                            href={doc.download_url}
-                                            target="_blank"
-                                            rel="noopener noreferrer"
-                                            className="p-1 rounded hover:bg-slate-200 transition-colors cursor-pointer"
-                                        >
-                                            <Download className="w-3.5 h-3.5 text-slate-400" />
-                                        </a>
-                                    )}
-                                </div>
-                            </div>
-                        ))}
-                    </div>
-                )}
-            </div>
-        </div>
-    )
-}
 
 function LockedSectionContent({ title }: { title: string }) {
     return (

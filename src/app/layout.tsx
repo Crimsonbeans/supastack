@@ -6,8 +6,8 @@ import { cn } from "@/lib/utils";
 const inter = Inter({ subsets: ["latin"], variable: "--font-inter" });
 
 export const metadata: Metadata = {
-  title: "GTM & AI Readiness Index",
-  description: "Check your company's GTM & AI Readiness Score.",
+  title: "SupaStack — GTM & AI Readiness Operating System",
+  description: "SupaStack gives mid-market leadership teams a structured, evidence-led operating system to diagnose, prove, and operationalise AI across their go-to-market and partner ecosystems.",
 };
 
 import { ThemeProvider } from "@/components/theme-provider"
